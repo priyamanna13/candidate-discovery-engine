@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Candidate Discovery Engine</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+/* =================================================================
+   DESIGN TOKENS
+   A restrained, near-monochrome dark canvas. Colour is reserved for
+   data semantics (green / amber / red) and a single luminous teal
+   accent used sparingly — so a colourful Spline 3D element can be the
+   visual hero without the UI fighting it.
+   ================================================================= */
+:root {
+  --bg:          #0a0a0d;
+  --bg-2:        #08080a;
+  --surface:     #101015;
+  --surface-2:   #16161d;
+  --surface-3:   #1c1c25;
+  --line:        #21212a;
+  --line-2:      #2c2c38;
+
+  --text:        #f4f4f7;
+  --text-2:      #a6abb8;
+  --text-3:      #6e7280;
+  --text-4:      #494c56;
+
+  --accent:      #5eead4;   /* luminous teal — signature */
+  --accent-2:    #2dd4bf;
+  --accent-soft: rgba(94,234,212,.12);
+
+  --good:        #4ade80;
+  --mid:         #fbbf24;
+  --bad:         #f87171;
+
+  --gold:        #f0cb8a;
+  --silver:      #cfd3da;
+  --bronze:      #d99a6a;
+
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --maxw: 1320px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select { font-family: inherit; color: inherit; }
+::selection { background: rgba(94,234,212,.25); color: #fff; }
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #26262f; border-radius: 8px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #34343f; }
+
+/* fine film-grain for texture (premium detail) */
+.grain {
+  position: fixed; inset: 0; z-index: 999; pointer-events: none;
+  opacity: .04; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* icon defaults */
+.ico { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.ico-sm { width: 15px; height: 15px; }
+.ico-lg { width: 22px; height: 22px; }
+
+/* =================================================================
+   NAVBAR — frosted, slim
+   ================================================================= */
+.navbar {
+  position: sticky; top: 0; z-index: 100;
+  height: 64px;
+  background: rgba(10,10,13,.72);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-bottom: 1px solid var(--line);
+}
+.navbar__inner {
+  width: 100%; max-width: var(--maxw); margin: 0 auto; height: 100%;
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand__mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--accent-soft);
+  border: 1px solid rgba(94,234,212,.22);
+  color: var(--accent);
+}
+.brand__mark .ico { width: 19px; height: 19px; stroke-width: 1.5; }
+.brand__txt { display: flex; flex-direction: column; line-height: 1.1; }
+.brand__name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.brand__sub { font-size: 10.5px; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-top: 2px; }
+
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.nav-links { display: flex; align-items: center; gap: 4px; margin-right: 6px; }
+.nav-link {
+  font-size: 13.5px; font-weight: 500; color: var(--text-3);
+  padding: 8px 14px; border-radius: var(--r-sm);
+  transition: color .18s, background .18s; position: relative;
+}
+.nav-link:hover { color: var(--text); background: var(--surface); }
+.nav-link.active { color: var(--text); }
+.nav-link.active::after {
+  content: ''; position: absolute; left: 14px; right: 14px; bottom: 2px;
+  height: 1.5px; background: var(--accent); border-radius: 2px;
+}
+.dataset-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--text-2);
+  padding: 6px 11px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.dataset-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.dataset-pill b { color: var(--text); font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 15px; border-radius: var(--r-sm);
+  font-size: 13.5px; font-weight: 500;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--text);
+  transition: background .18s ease, border-color .18s ease, transform .12s ease, color .18s ease;
+}
+.btn:hover { background: var(--surface-2); border-color: #3a3a48; }
+.btn:active { transform: translateY(1px); }
+.btn--ghost { background: transparent; border-color: var(--line); color: var(--text-2); }
+.btn--ghost:hover { color: var(--text); background: var(--surface); }
+.btn--accent {
+  background: var(--accent); border-color: var(--accent); color: #06241f; font-weight: 600;
+  box-shadow: 0 0 0 0 rgba(94,234,212,.4);
+}
+.btn--accent:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  display: grid; place-items: center; color: var(--text-2);
+  border: 1px solid var(--line); background: transparent;
+  transition: background .18s, color .18s, border-color .18s;
+}
+.icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--line-2); }
+
+/* =================================================================
+   PAGE SHELL
+   ================================================================= */
+.page { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 36px 32px 64px; }
+.section { margin-top: 40px; }
+.eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 16px;
+}
+.eyebrow .tick { width: 18px; height: 1px; background: var(--line-2); }
+
+.reveal { opacity: 0; transform: translateY(14px); animation: reveal .7s cubic-bezier(.16,.84,.44,1) forwards; }
+@keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+
+/* =================================================================
+   HERO  (Spline lives here)
+   ================================================================= */
+.hero {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  min-height: 360px;
+}
+.hero__ambient {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(50% 70% at 78% 8%, rgba(94,234,212,.14), transparent 65%),
+    radial-gradient(40% 60% at 95% 95%, rgba(45,212,191,.08), transparent 60%);
+}
+.hero__copy { position: relative; z-index: 2; padding: 48px 48px 44px; display: flex; flex-direction: column; justify-content: center; }
+.hero__badge {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent);
+  padding: 5px 11px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.22);
+  margin-bottom: 22px;
+}
+.hero__badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(94,234,212,.6); animation: pulse 2.4s infinite; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(94,234,212,.5)} 70%{box-shadow:0 0 0 9px rgba(94,234,212,0)} 100%{box-shadow:0 0 0 0 rgba(94,234,212,0)} }
+
+.hero__title {
+  font-size: 38px; font-weight: 600; line-height: 1.08; letter-spacing: -0.025em;
+  margin-bottom: 16px;
+}
+.hero__title em { font-style: normal; color: var(--accent); }
+.hero__sub { color: var(--text-2); font-size: 15.5px; max-width: 48ch; line-height: 1.55; }
+.hero__stats { display: flex; gap: 28px; margin-top: 28px; }
+.hero__stat { display: flex; flex-direction: column; gap: 3px; }
+.hero__stat .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 500; color: var(--text); }
+.hero__stat .l { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.hero__stat .sep { width: 1px; align-self: stretch; background: var(--line-2); }
+
+/* Spline slot */
+#spline-container {
+  position: relative; z-index: 1;
+  min-height: 360px;
+  border-left: 1px solid var(--line);
+  background:
+    radial-gradient(60% 60% at 60% 45%, rgba(94,234,212,.10), transparent 70%),
+    var(--bg-2);
+  display: grid; place-items: center;
+  /* CRITICAL ADDITION: This hides anything that bleeds outside the box */
+  overflow: hidden; 
+}
+
+#spline-container spline-viewer { 
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  /* CRITICAL ADDITION: Makes the viewer wider and taller to push the logo out of bounds */
+  width: calc(100% + 120px); 
+  height: calc(100% + 60px); 
+}
+
+.spline-placeholder {
+  text-align: center; color: var(--text-3);
+  border: 1px dashed var(--line-2); border-radius: var(--r-md);
+  padding: 26px 30px; max-width: 280px;
+  background: rgba(16,16,21,.4); backdrop-filter: blur(2px);
+}
+.spline-placeholder .glyph {
+  width: 46px; height: 46px; margin: 0 auto 12px; border-radius: 12px;
+  display: grid; place-items: center; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.2);
+}
+.spline-placeholder b { display: block; color: var(--text-2); font-size: 13px; font-weight: 600; margin-bottom: 4px; letter-spacing: -0.01em; }
+.spline-placeholder small { font-size: 11.5px; line-height: 1.5; }
+
+/* =================================================================
+   METRICS BAR — unified panel, not 4 floating boxes
+   ================================================================= */
+.metrics {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
+}
+.metric {
+  background: var(--surface); padding: 22px 26px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: background .2s ease;
+}
+.metric:hover { background: var(--surface-2); }
+.metric__head { display: flex; align-items: center; gap: 9px; color: var(--text-3); }
+.metric__head .ico { color: var(--text-3); }
+.metric__label { font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+.metric__value {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 30px; font-weight: 500; letter-spacing: -0.02em; color: var(--text);
+  line-height: 1;
+}
+.metric__unit { font-size: 13px; color: var(--text-3); font-family: var(--mono); margin-left: 4px; }
+
+/* =================================================================
+   CHARTS
+   ================================================================= */
+.grid-2 { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 24px 26px;
+}
+.panel__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.panel__title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.panel__hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+.chart-wrap { position: relative; height: 300px; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-2); flex-wrap: wrap; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* =================================================================
+   TOOLBAR
+   ================================================================= */
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 16px 20px;
+}
+.search-wrap { position: relative; flex: 1 1 280px; min-width: 220px; }
+.search-wrap .ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
+.search {
+  width: 100%; padding: 11px 14px 11px 40px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-size: 14px; color: var(--text); transition: border-color .18s, box-shadow .18s;
+}
+.search::placeholder { color: var(--text-4); }
+.search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,234,212,.12); }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 10.5px; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
+.select {
+  padding: 10px 32px 10px 12px; background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--r-sm); font-size: 13.5px; min-width: 100px; font-family: var(--mono);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236e7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 5 3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+  cursor: pointer;
+}
+.select:focus { outline: none; border-color: var(--accent); }
+.toolbar__count { margin-left: auto; font-size: 13px; color: var(--text-3); align-self: center; white-space: nowrap; }
+.toolbar__count b { color: var(--text); font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+/* =================================================================
+   TABLE
+   ================================================================= */
+.table-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface);
+  text-align: left; font-size: 10.5px; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--text-3);
+  padding: 15px 20px; border-bottom: 1px solid var(--line);
+  cursor: pointer; user-select: none; white-space: nowrap;
+  transition: color .15s;
+}
+thead th:hover { color: var(--text-2); }
+thead th.nosort { cursor: default; }
+thead th .arr { display: inline-flex; opacity: 0; margin-left: 5px; transition: opacity .15s; color: var(--accent); }
+thead th .arr .ico { width: 12px; height: 12px; }
+thead th.sorted .arr { opacity: 1; }
+thead th.sorted { color: var(--text); }
+
+tbody td { padding: 14px 20px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .16s ease; position: relative; }
+tbody tr:hover { background: var(--surface-2); }
+
+.c-rank { width: 76px; }
+.c-id { width: 190px; }
+.c-view { width: 64px; text-align: right; }
+
+.rank-badge {
+  display: inline-grid; place-items: center;
+  min-width: 32px; height: 26px; padding: 0 8px;
+  border-radius: 7px; font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 600;
+  background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line);
+}
+.rank-badge.t1 { background: rgba(240,203,138,.10); color: var(--gold); border-color: rgba(240,203,138,.22); }
+.rank-badge.t2 { background: rgba(207,211,218,.08); color: var(--silver); border-color: rgba(207,211,218,.18); }
+.rank-badge.t3 { background: rgba(217,154,106,.10); color: var(--bronze); border-color: rgba(217,154,106,.22); }
+
+.cand-id { font-family: var(--mono); font-size: 13px; color: var(--text-2); letter-spacing: -0.01em; }
+
+.score-cell { display: flex; align-items: center; gap: 12px; }
+.bar-track { flex: 1; max-width: 120px; height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.bar-fill { height: 100%; border-radius: 999px; transition: width .5s cubic-bezier(.16,.84,.44,1); }
+.score-num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); min-width: 40px; }
+
+.score-text { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 500; }
+.lvl-good { color: var(--good); }
+.lvl-mid  { color: var(--mid); }
+.lvl-low  { color: var(--bad); }
+
+.view-btn {
+  width: 34px; height: 30px; border-radius: var(--r-sm);
+  display: inline-grid; place-items: center; color: var(--text-3);
+  border: 1px solid var(--line); background: var(--bg);
+  transition: all .18s;
+}
+.view-btn:hover { color: var(--accent); border-color: rgba(94,234,212,.35); background: var(--accent-soft); }
+.view-btn.open { color: #06241f; background: var(--accent); border-color: var(--accent); }
+
+.detail-row td { padding: 0 !important; border: none !important; background: transparent !important; }
+.detail-inner {
+  max-height: 0; overflow: hidden; transition: max-height .4s cubic-bezier(.16,.84,.44,1);
+  margin: 0 20px 12px; border-radius: var(--r-sm);
+  background: var(--bg); border: 1px solid var(--line); border-left: 2px solid var(--accent);
+}
+.detail-inner.open { max-height: 240px; }
+.detail-body { padding: 16px 20px; }
+.detail-body .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .11em; color: var(--text-3); margin-bottom: 8px; font-weight: 600; }
+.detail-body p { color: var(--text-2); font-size: 14px; line-height: 1.6; }
+.detail-meta { display: flex; gap: 26px; margin-top: 16px; flex-wrap: wrap; }
+.detail-meta .k { font-size: 10.5px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; margin-right: 7px; }
+.detail-meta .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text); }
+
+.empty-state { padding: 56px 20px; text-align: center; color: var(--text-3); font-size: 14px; }
+
+/* =================================================================
+   FOOTER
+   ================================================================= */
+.footer { border-top: 1px solid var(--line); background: var(--bg-2); margin-top: 56px; }
+.footer__inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 22px 32px;
+  display: flex; flex-wrap: wrap; gap: 6px 0; align-items: center; justify-content: space-between;
+}
+.footer__left { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: 12.5px; color: var(--text-3); }
+.footer__left .sep { color: var(--line-2); }
+.footer__left code { font-family: var(--mono); color: var(--text-2); font-size: 12px; }
+.footer__right { font-size: 11.5px; color: var(--text-4); letter-spacing: .04em; }
+
+/* =================================================================
+   MODAL
+   ================================================================= */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(4,4,6,.72); backdrop-filter: blur(8px);
+  display: grid; place-items: center; padding: 24px;
+  opacity: 0; pointer-events: none; transition: opacity .25s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  position: relative;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-lg);
+  max-width: 540px; width: 100%; padding: 32px 34px;
+  transform: scale(.96) translateY(8px); transition: transform .3s cubic-bezier(.16,.84,.44,1);
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+}
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+.modal__close {
+  position: absolute; top: 16px; right: 16px;
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  display: grid; place-items: center; color: var(--text-3);
+  transition: background .18s, color .18s;
+}
+.modal__close:hover { background: var(--surface-2); color: var(--text); }
+.modal__eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.modal h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin: 6px 0 8px; padding-right: 36px; }
+.modal__sub { color: var(--text-3); font-size: 14px; margin-bottom: 26px; }
+.step { display: flex; gap: 15px; padding: 14px 0; border-top: 1px solid var(--line); }
+.step:first-of-type { border-top: none; padding-top: 4px; }
+.step__icon {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--line);
+  display: grid; place-items: center; color: var(--accent);
+}
+.step h3 { font-size: 14.5px; font-weight: 600; margin-bottom: 3px; display: flex; align-items: center; gap: 8px; }
+.step h3 .pct { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text-3); }
+.step p { font-size: 13.5px; color: var(--text-2); line-height: 1.55; }
+.modal__meta { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; gap: 28px; flex-wrap: wrap; }
+.modal__meta div { font-size: 12.5px; color: var(--text-3); }
+.modal__meta b { display: block; color: var(--text); font-family: var(--mono); font-size: 14px; margin-top: 2px; }
+
+/* =================================================================
+   RESPONSIVE
+   ================================================================= */
+@media (max-width: 1080px) {
+  .hero { grid-template-columns: 1fr; }
+  #spline-container { min-height: 240px; border-left: none; border-top: 1px solid var(--line); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .hero__copy { padding: 36px 32px; }
+  .hero__title { font-size: 30px; }
+}
+@media (max-width: 820px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .brand__sub { display: none; }
+}
+@media (max-width: 640px) {
+  .page { padding: 24px 18px 48px; }
+  .navbar__inner { padding: 0 18px; }
+  .metrics { grid-template-columns: 1fr; }
+  .hero__title { font-size: 26px; }
+  .hero__copy { padding: 30px 22px; }
+  .hero__stats { gap: 18px; }
+  .toolbar__count { margin-left: 0; width: 100%; }
+  .dataset-pill { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+<!-- Spline 3D viewer web component (vanilla, no build step needed).
+     This is the HTML equivalent of the React <Spline/> component.
+     Loaded from unpkg CDN (matches the version noted in the slot comment). -->
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js"></script>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- ===================== ICON SPRITE ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="12.5" stroke-width="1.5"/>
+    <circle cx="16" cy="16" r="4" fill="currentColor" stroke="none"/>
+    <path d="M16 3.5v6M16 22.5v6M3.5 16h6M22.5 16h6"/>
+  </symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M12 4 8 8M12 4l4 4"/><path d="M4 14v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-arr-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></symbol>
+  <symbol id="i-arr-down" viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.5 5.9.7-4.4 4 1.2 5.9L12 16.7 6.7 19.6l1.2-5.9-4.4-4 5.9-.7L12 3.5Z"/></symbol>
+  <symbol id="i-trend-down" viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 8 8"/><path d="M21 17v-4h-4"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10A1.5 1.5 0 0 0 18.5 19V8Z"/><path d="M14 3.5V8h4.5M9 13h6M9 16.5h5"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9 2.5v3.5M15 2.5v3.5M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/></symbol>
+  <symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><rect x="7.5" y="12" width="3" height="5"/><rect x="12.5" y="8" width="3" height="9"/><rect x="17.5" y="14" width="0.5" height="3"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5.5H4.5a2 2 0 0 0 0 4H7M17 5.5h2.5a2 2 0 0 1 0 4H17M10 13.5v3M14 13.5v3M7.5 20h9M9 20v-1.5h6V20"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7L12 2.5Z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5V21.5"/></symbol>
+</svg>
+
+<!-- ===================== NAVBAR ===================== -->
+<header class="navbar">
+  <div class="navbar__inner">
+    <div class="brand">
+      <div class="brand__mark"><svg class="ico"><use href="#i-logo"/></svg></div>
+      <div class="brand__txt">
+        <span class="brand__name">Candidate Discovery Engine</span>
+        <span class="brand__sub">AI Ranking System</span>
+      </div>
+    </div>
+    <div class="nav-right">
+      <nav class="nav-links">
+        <a href="dashboard.html" class="nav-link active">Dashboard</a>
+        <a href="methodology.html" class="nav-link">Methodology</a>
+      </nav>
+      <span class="dataset-pill" id="dataset-pill"><span class="dot"></span><b>Sample data</b></span>
+      <input type="file" id="csv-input" accept=".csv,text/csv" hidden />
+      <button class="btn btn--accent" id="upload-btn"><svg class="ico ico-sm"><use href="#i-upload"/></svg>Upload CSV</button>
+      <button class="icon-btn" id="about-btn" title="About" aria-label="About"><svg class="ico"><use href="#i-info"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ===================== HERO (Spline) ===================== -->
+  <section class="reveal" style="animation-delay:.05s">
+    <div class="hero">
+      <div class="hero__ambient"></div>
+      <div class="hero__copy">
+        <span class="hero__badge"><span class="pulse"></span>Intelligent Candidate Discovery</span>
+        <h1 class="hero__title">Rank 100,000 candidates in seconds. <em>See the top 100.</em></h1>
+        <p class="hero__sub">Semantic resume understanding, blended with behavioural engagement signals — surfaced as a single, transparent fit score.</p>
+        <div class="hero__stats">
+          <div class="hero__stat"><span class="n">100K</span><span class="l">Pool</span></div>
+          <div class="hero__stat"><span class="sep"></span></div>
+          <div class="hero__stat"><span class="n">100</span><span class="l">Ranked</span></div>
+          <div class="hero__stat"><span class="sep"></span></div>
+          <div class="hero__stat"><span class="n">70 / 30</span><span class="l">Semantic / Behavioural</span></div>
+        </div>
+      </div>
+      <!--
+        ╔══════════════════════════════════════════════════════════╗
+        ║  SPLINE 3D SLOT                                            ║
+        ║  1. Add to <head>:                                         ║
+        ║     <script type="module"                                  ║
+        ║       src="https://unpkg.com/@splinetool/viewer@1.9.48/    ║
+        ║              build/spline-viewer.js"></script>             ║
+        ║  2. Replace the .spline-placeholder block below with:      ║
+        ║     <spline-viewer url="https://prod.spline.design/        ║
+        ║        XXXXXXX/scene.splinecode"></spline-viewer>          ║
+        ║  CSS already sizes spline-viewer to fill this panel.       ║
+        ╚══════════════════════════════════════════════════════════╝
+      -->
+      <div id="spline-container">
+        <!-- Live Spline 3D scene (hosted on prod.spline.design).
+             This is the same scene referenced in the team's React snippet:
+               scene="https://prod.spline.design/qjNs3Fys2x0ZXGJ6/scene.splinecode"
+             Rendered here via the <spline-viewer> web component so it works
+             in plain HTML (no React/Next.js build needed). The #spline-container
+             CSS already sizes spline-viewer to fill the panel. -->
+        <spline-viewer
+          url="https://prod.spline.design/qjNs3Fys2x0ZXGJ6/scene.splinecode"
+          loading-anim-type="none">
+        </spline-viewer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== METRICS ===================== -->
+  <section class="section reveal" style="animation-delay:.12s">
+    <div class="eyebrow"><span class="tick"></span>Overview</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric__head"><svg class="ico ico-sm"><use href="#i-grid"/></svg><span class="metric__label">Candidates Ranked</span></div>
+        <div class="metric__value" id="stat-count">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric__head"><svg class="ico ico-sm"><use href="#i-star"/></svg><span class="metric__label">Top Score</span></div>
+        <div class="metric__value"><span id="stat-top">—</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric__head"><svg class="ico ico-sm"><use href="#i-trend-down"/></svg><span class="metric__label">Min Score</span></div>
+        <div class="metric__value"><span id="stat-min">—</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric__head"><svg class="ico ico-sm"><use href="#i-target"/></svg><span class="metric__label">Average</span></div>
+        <div class="metric__value"><span id="stat-avg">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CHARTS ===================== -->
+  <section class="section reveal" style="animation-delay:.19s">
+    <div class="eyebrow"><span class="tick"></span>Distribution</div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel__head">
+          <div>
+            <div class="panel__title">Score Distribution</div>
+            <div class="panel__hint">Candidates grouped into 0.01 fit-score bands</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-distribution"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel__head">
+          <div>
+            <div class="panel__title">Semantic vs Behavioural</div>
+            <div class="panel__hint">Each point is one candidate, coloured by rank tier</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-scatter"></canvas></div>
+        <div class="legend" style="margin-top:14px;justify-content:center">
+          <span><i style="background:#f0cb8a"></i>Top 1–10</span>
+          <span><i style="background:#5eead4"></i>11–50</span>
+          <span><i style="background:#56586a"></i>51–100</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TOOLBAR ===================== -->
+  <section class="section reveal" style="animation-delay:.26s">
+    <div class="eyebrow"><span class="tick"></span>Leaderboard</div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="ico"><use href="#i-search"/></svg>
+        <input type="text" class="search" id="search" placeholder="Search by Candidate ID…" />
+      </div>
+      <div class="field">
+        <label for="min-score">Min score</label>
+        <select class="select" id="min-score"></select>
+      </div>
+      <div class="field">
+        <label for="max-score">Max score</label>
+        <select class="select" id="max-score"></select>
+      </div>
+      <div class="toolbar__count">Showing <b id="count-shown">0</b> of <b id="count-total">0</b></div>
+    </div>
+  </section>
+
+  <!-- ===================== TABLE ===================== -->
+  <section class="reveal" style="animation-delay:.33s; margin-top:16px;">
+    <div class="table-card">
+      <div class="table-scroll">
+        <table id="leaderboard">
+          <thead>
+            <tr>
+              <th class="c-rank" data-key="rank">Rank<span class="arr"><svg class="ico"><use href="#i-arr-up"/></svg></span></th>
+              <th class="c-id" data-key="candidate_id">Candidate<span class="arr"><svg class="ico"><use href="#i-arr-up"/></svg></span></th>
+              <th data-key="score">Final Score<span class="arr"><svg class="ico"><use href="#i-arr-up"/></svg></span></th>
+              <th data-key="semantic">Semantic<span class="arr"><svg class="ico"><use href="#i-arr-up"/></svg></span></th>
+              <th data-key="behavioral">Behavioural<span class="arr"><svg class="ico"><use href="#i-arr-up"/></svg></span></th>
+              <th class="c-view nosort">Detail</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__left">
+      <span>Built for RedRob AI Hackathon 2025</span>
+      <span class="sep">·</span>
+      <span>Model <code>all-MiniLM-L6-v2</code></span>
+      <span class="sep">·</span>
+      <span>Weights <code>70% semantic · 30% behavioural</code></span>
+    </div>
+    <div class="footer__right">sentence-transformers</div>
+  </div>
+</footer>
+
+<!-- ===================== ABOUT MODAL ===================== -->
+<div class="modal-overlay" id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
+  <div class="modal">
+    <button class="modal__close" id="modal-close" aria-label="Close"><svg class="ico"><use href="#i-close"/></svg></button>
+    <span class="modal__eyebrow">Methodology</span>
+    <h2 id="about-title">How the engine ranks</h2>
+    <p class="modal__sub">A transparent, four-stage pipeline from job description to final ranking.</p>
+
+    <div class="step">
+      <div class="step__icon"><svg class="ico"><use href="#i-doc"/></svg></div>
+      <div>
+        <h3>Job Description Analysis</h3>
+        <p>The job posting is parsed and embedded to capture intent, required skills and context.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step__icon"><svg class="ico"><use href="#i-chip"/></svg></div>
+      <div>
+        <h3>Semantic Matching <span class="pct">· 70%</span></h3>
+        <p>Each candidate profile is embedded with sentence-transformers and compared by meaning — not keyword overlap.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step__icon"><svg class="ico"><use href="#i-bars"/></svg></div>
+      <div>
+        <h3>Behavioural Signals <span class="pct">· 30%</span></h3>
+        <p>Profile completeness, response time and engagement metrics are scored as an activity signal.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step__icon"><svg class="ico"><use href="#i-trophy"/></svg></div>
+      <div>
+        <h3>Final Ranking</h3>
+        <p>The two signals blend into one fit score. The top 100 of 100,000 candidates are shown here.</p>
+      </div>
+    </div>
+
+    <div class="modal__meta">
+      <div>Dataset<b>100,000 candidates</b></div>
+      <div>Model<b>all-MiniLM-L6-v2</b></div>
+      <div>Shown<b>Top 100</b></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SAMPLE FALLBACK DATA
+   ============================================================ */
+const SAMPLE_DATA = [
+  {candidate_id:"CAND_0004402",rank:1,score:0.6663,reasoning:"Rank 1: blended fit 0.67 (semantic match 0.60, behavioral engagement 0.82). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0093193",rank:2,score:0.6661,reasoning:"Rank 2: blended fit 0.67 (semantic match 0.61, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0064326",rank:3,score:0.6644,reasoning:"Rank 3: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0081846",rank:4,score:0.6617,reasoning:"Rank 4: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.82). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0053591",rank:5,score:0.6611,reasoning:"Rank 5: blended fit 0.66 (semantic match 0.62, behavioral engagement 0.75). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0006567",rank:6,score:0.6585,reasoning:"Rank 6: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.77). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0046132",rank:7,score:0.6581,reasoning:"Rank 7: blended fit 0.66 (semantic match 0.58, behavioral engagement 0.83). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0054318",rank:8,score:0.6579,reasoning:"Rank 8: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0046525",rank:9,score:0.6578,reasoning:"Rank 9: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
+  {candidate_id:"CAND_0002025",rank:10,score:0.6564,reasoning:"Rank 10: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit — included as a lower-rank option."}
+];
+
+let DATA = [];
+let sortKey = 'rank', sortDir = 'asc';
+let distChart = null, scatterChart = null;
+
+/* ---- Chart.js global theme ---- */
+Chart.defaults.color = '#6e7280';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 11.5;
+Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+
+/* ============================================================
+   PARSING
+   ============================================================ */
+function parseReasoning(reasoning) {
+  const sem = reasoning.match(/semantic match ([\d.]+)/);
+  const beh = reasoning.match(/behavioral engagement ([\d.]+)/);
+  return { semantic: sem ? parseFloat(sem[1]) : 0, behavioral: beh ? parseFloat(beh[1]) : 0 };
+}
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i + 1];
+    if (inQ) {
+      if (c === '"' && n === '"') { field += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') {}
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length && r.some(v => v !== ''));
+}
+function normalizeCSV(rows) {
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => h.trim());
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i]; if (!r.length) continue;
+    const obj = {}; headers.forEach((h, idx) => obj[h] = (r[idx] || '').trim());
+    const sub = parseReasoning(obj.reasoning || '');
+    out.push({
+      candidate_id: obj.candidate_id, rank: parseInt(obj.rank, 10) || 0,
+      score: parseFloat(obj.score) || 0, reasoning: obj.reasoning || '',
+      semantic: sub.semantic, behavioral: sub.behavioral
+    });
+  }
+  return out;
+}
+function loadData(rows, label) {
+  DATA = rows.map(r => {
+    const sub = parseReasoning(r.reasoning || '');
+    return { candidate_id:r.candidate_id, rank:r.rank, score:r.score, reasoning:r.reasoning, semantic:sub.semantic, behavioral:sub.behavioral };
+  }).sort((a, b) => a.rank - b.rank);
+  document.querySelector('#dataset-pill b').textContent = label || 'Sample data';
+  renderAll();
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const fmt  = n => n.toFixed(4);
+const fmt2 = n => n.toFixed(2);
+const scoreClass = v => v > 0.6 ? 'lvl-good' : v >= 0.5 ? 'lvl-mid' : 'lvl-low';
+function barColor(score, min, max) {
+  const t = (max === min) ? 1 : (score - min) / (max - min);
+  const hue = Math.round(t * 120);
+  return `hsl(${hue}, 65%, 48%)`;
+}
+const tier = r => r === 1 ? 't1' : r === 2 ? 't2' : r === 3 ? 't3' : '';
+
+/* ============================================================
+   RENDER: METRICS
+   ============================================================ */
+function renderStats() {
+  const s = DATA.map(d => d.score), n = s.length;
+  document.getElementById('stat-count').textContent = n;
+  document.getElementById('stat-top').textContent  = n ? fmt(Math.max(...s)) : '—';
+  document.getElementById('stat-min').textContent  = n ? fmt(Math.min(...s)) : '—';
+  document.getElementById('stat-avg').textContent  = n ? fmt(s.reduce((a,b)=>a+b,0)/n) : '—';
+}
+
+/* ============================================================
+   RENDER: SCORE SELECTS
+   ============================================================ */
+function buildScoreSelects() {
+  if (!DATA.length) return;
+  const lo = Math.floor(Math.min(...DATA.map(d=>d.score)) * 100);
+  const hi = Math.ceil (Math.max(...DATA.map(d=>d.score)) * 100);
+  const minSel = document.getElementById('min-score');
+  const maxSel = document.getElementById('max-score');
+  const pmin = minSel.value, pmax = maxSel.value;
+  minSel.innerHTML = ''; maxSel.innerHTML = '';
+  for (let c = lo; c <= hi; c++) { const v = (c/100).toFixed(2); minSel.add(new Option(v, v)); maxSel.add(new Option(v, v)); }
+  minSel.value = pmin || (lo/100).toFixed(2);
+  maxSel.value = pmax || (hi/100).toFixed(2);
+}
+
+/* ============================================================
+   FILTER + SORT
+   ============================================================ */
+function getFiltered() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const mn = parseFloat(document.getElementById('min-score').value) || 0;
+  const mx = parseFloat(document.getElementById('max-score').value) || 1;
+  const [lo, hi] = [Math.min(mn, mx), Math.max(mn, mx)];
+  let rows = DATA.filter(d => (!q || d.candidate_id.toLowerCase().includes(q)) && (d.score >= lo && d.score <= hi));
+  rows.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  document.getElementById('count-shown').textContent = rows.length;
+  document.getElementById('count-total').textContent = DATA.length;
+  return rows;
+}
+
+/* ============================================================
+   RENDER: TABLE
+   ============================================================ */
+function renderTable() {
+  const rows = getFiltered();
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No candidates match your filters.</td></tr>`; updateSortIndicators(); return; }
+
+  const scores = DATA.map(d => d.score);
+  const minS = Math.min(...scores), maxS = Math.max(...scores);
+  const frag = document.createDocumentFragment();
+
+  rows.forEach(d => {
+    const fillPct = ((d.score - minS) / (maxS - minS || 1)) * 88 + 12;
+    const color = barColor(d.score, minS, maxS);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="c-rank"><span class="rank-badge ${tier(d.rank)}">${d.rank}</span></td>
+      <td class="c-id"><span class="cand-id">${d.candidate_id}</span></td>
+      <td>
+        <div class="score-cell">
+          <div class="bar-track"><div class="bar-fill" style="width:${fillPct}%;background:${color}"></div></div>
+          <span class="score-num">${fmt2(d.score)}</span>
+        </div>
+      </td>
+      <td><span class="score-text ${scoreClass(d.semantic)}">${fmt2(d.semantic)}</span></td>
+      <td><span class="score-text ${scoreClass(d.behavioral)}">${fmt2(d.behavioral)}</span></td>
+      <td class="c-view"><button class="view-btn" title="View reasoning"><svg class="ico ico-sm"><use href="#i-eye"/></svg></button></td>
+    `;
+
+    const detail = document.createElement('tr');
+    detail.className = 'detail-row';
+    detail.innerHTML = `
+      <td colspan="6">
+        <div class="detail-inner">
+          <div class="detail-body">
+            <div class="lbl">Reasoning</div>
+            <p>${escapeHtml(d.reasoning)}</p>
+            <div class="detail-meta">
+              <div><span class="k">Candidate</span><span class="v">${d.candidate_id}</span></div>
+              <div><span class="k">Rank</span><span class="v">#${d.rank}</span></div>
+              <div><span class="k">Final</span><span class="v">${fmt(d.score)}</span></div>
+              <div><span class="k">Semantic</span><span class="v">${fmt2(d.semantic)}</span></div>
+              <div><span class="k">Behavioural</span><span class="v">${fmt2(d.behavioral)}</span></div>
+            </div>
+          </div>
+        </div>
+      </td>`;
+
+    const btn = tr.querySelector('.view-btn');
+    const inner = detail.querySelector('.detail-inner');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = inner.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.innerHTML = open
+        ? `<svg class="ico ico-sm"><use href="#i-close"/></svg>`
+        : `<svg class="ico ico-sm"><use href="#i-eye"/></svg>`;
+    });
+
+    frag.appendChild(tr); frag.appendChild(detail);
+  });
+  tbody.appendChild(frag);
+  updateSortIndicators();
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function updateSortIndicators() {
+  document.querySelectorAll('#leaderboard thead th[data-key]').forEach(th => {
+    const arr = th.querySelector('.arr use');
+    if (th.dataset.key === sortKey) {
+      th.classList.add('sorted');
+      arr.setAttribute('href', sortDir === 'asc' ? '#i-arr-up' : '#i-arr-down');
+    } else {
+      th.classList.remove('sorted');
+      arr.setAttribute('href', '#i-arr-up');
+    }
+  });
+}
+
+/* ============================================================
+   RENDER: CHARTS
+   ============================================================ */
+function tooltipCfg() {
+  return {
+    backgroundColor: '#101015', borderColor: '#2c2c38', borderWidth: 1,
+    titleColor: '#f4f4f7', bodyColor: '#a6abb8', padding: 12,
+    titleFont: { weight: '600', size: 12.5 }, bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
+    cornerRadius: 8, displayColors: false, caretSize: 6
+  };
+}
+function renderDistribution() {
+  const bins = ['0.62–0.63','0.63–0.64','0.64–0.65','0.65–0.66','0.66–0.67'];
+  const counts = [0,0,0,0,0];
+  DATA.forEach(d => {
+    if (d.score < 0.63) counts[0]++;
+    else if (d.score < 0.64) counts[1]++;
+    else if (d.score < 0.65) counts[2]++;
+    else if (d.score < 0.66) counts[3]++;
+    else counts[4]++;
+  });
+  const ctx = document.getElementById('chart-distribution').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, 'rgba(94,234,212,0.85)');
+  grad.addColorStop(1, 'rgba(94,234,212,0.10)');
+  if (distChart) distChart.destroy();
+  distChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: bins, datasets: [{
+      data: counts, backgroundColor: grad, hoverBackgroundColor: 'rgba(94,234,212,0.95)',
+      borderRadius: { topLeft:6, topRight:6, bottomLeft:2, bottomRight:2 }, borderSkipped: false, maxBarThickness: 56
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 800, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipCfg(), callbacks: { label: c => `${c.parsed.y} candidates` } }
+      },
+      scales: {
+        x: { grid: { display: false }, border: { color: '#21212a' }, ticks: { color: '#6e7280' } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.035)' }, border: { display: false }, ticks: { color: '#6e7280', precision: 0, maxTicksLimit: 5 } }
+      }
+    }
+  });
+}
+function renderScatter() {
+  const sets = [
+    { label:'Top 1–10', color:'#f0cb8a', rows: DATA.filter(d => d.rank <= 10) },
+    { label:'11–50',    color:'#5eead4', rows: DATA.filter(d => d.rank > 10 && d.rank <= 50) },
+    { label:'51–100',   color:'#56586a', rows: DATA.filter(d => d.rank > 50) }
+  ].map(ds => ({
+    label: ds.label, data: ds.rows.map(d => ({ x:d.semantic, y:d.behavioral, id:d.candidate_id, rank:d.rank, score:d.score })),
+    backgroundColor: ds.color + 'cc', borderColor: ds.color, borderWidth: 1.2,
+    pointRadius: 4.5, pointHoverRadius: 7, pointHoverBorderWidth: 2
+  }));
+  const ctx = document.getElementById('chart-scatter').getContext('2d');
+  if (scatterChart) scatterChart.destroy();
+  scatterChart = new Chart(ctx, {
+    type: 'scatter', data: { datasets: sets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 800 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipCfg(), callbacks: {
+          title: it => it[0].raw.id,
+          label: it => [`Rank #${it.raw.rank}`, `Score ${fmt(it.raw.score)}`, `Semantic ${fmt2(it.raw.x)}`, `Behavioural ${fmt2(it.raw.y)}`]
+        }}
+      },
+      scales: {
+        x: { min:0.5, max:0.7, title:{ display:true, text:'Semantic score', color:'#6e7280', font:{size:11} },
+             grid:{ color:'rgba(255,255,255,0.035)' }, border:{ color:'#21212a' }, ticks:{ color:'#6e7280', stepSize:0.05 } },
+        y: { min:0.55, max:0.9, title:{ display:true, text:'Behavioural score', color:'#6e7280', font:{size:11} },
+             grid:{ color:'rgba(255,255,255,0.035)' }, border:{ display:false }, ticks:{ color:'#6e7280', stepSize:0.05 } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll() { buildScoreSelects(); renderStats(); renderDistribution(); renderScatter(); renderTable(); }
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+function wireEvents() {
+  const input = document.getElementById('csv-input');
+  document.getElementById('upload-btn').addEventListener('click', () => input.click());
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rows = normalizeCSV(parseCSV(ev.target.result));
+      if (rows.length) loadData(rows, file.name);
+      else alert('Could not read any rows from that CSV.');
+    };
+    reader.readAsText(file);
+    input.value = '';
+  });
+  document.getElementById('search').addEventListener('input', renderTable);
+  document.getElementById('min-score').addEventListener('change', renderTable);
+  document.getElementById('max-score').addEventListener('change', renderTable);
+
+  document.querySelectorAll('#leaderboard thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortKey = key; sortDir = 'asc'; }
+      renderTable();
+    });
+  });
+
+  const modal = document.getElementById('about-modal');
+  const open = () => modal.classList.add('open'), close = () => modal.classList.remove('open');
+  document.getElementById('about-btn').addEventListener('click', open);
+  document.getElementById('modal-close').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+wireEvents();
+loadData(SAMPLE_DATA, 'Sample data');
+</script>
+</body>
+</html>

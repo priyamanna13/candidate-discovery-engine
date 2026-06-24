@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Methodology — Candidate Discovery Engine</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+/* =================================================================
+   DESIGN TOKENS — identical to dashboard.html (single source of truth)
+   ================================================================= */
+:root {
+  --bg:          #0a0a0d;
+  --bg-2:        #08080a;
+  --surface:     #101015;
+  --surface-2:   #16161d;
+  --surface-3:   #1c1c25;
+  --line:        #21212a;
+  --line-2:      #2c2c38;
+
+  --text:        #f4f4f7;
+  --text-2:      #a6abb8;
+  --text-3:      #6e7280;
+  --text-4:      #494c56;
+
+  --accent:      #5eead4;
+  --accent-2:    #2dd4bf;
+  --accent-soft: rgba(94,234,212,.12);
+
+  --good:        #4ade80;
+  --mid:         #fbbf24;
+  --bad:         #f87171;
+
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --maxw: 1180px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+  overflow-x: hidden;
+}
+button, a { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; text-decoration: none; }
+input, select { font-family: inherit; color: inherit; }
+::selection { background: rgba(94,234,212,.25); color: #fff; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #26262f; border-radius: 8px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #34343f; }
+
+.grain {
+  position: fixed; inset: 0; z-index: 999; pointer-events: none;
+  opacity: .04; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ico { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.ico-sm { width: 15px; height: 15px; }
+.ico-lg { width: 22px; height: 22px; }
+
+/* =================================================================
+   NAVBAR
+   ================================================================= */
+.navbar {
+  position: sticky; top: 0; z-index: 100;
+  height: 64px;
+  background: rgba(10,10,13,.72);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-bottom: 1px solid var(--line);
+}
+.navbar__inner {
+  width: 100%; max-width: var(--maxw); margin: 0 auto; height: 100%;
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand__mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.22);
+  color: var(--accent);
+}
+.brand__mark .ico { width: 19px; height: 19px; stroke-width: 1.5; }
+.brand__txt { display: flex; flex-direction: column; line-height: 1.1; }
+.brand__name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.brand__sub { font-size: 10.5px; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-top: 2px; }
+
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-link {
+  font-size: 13.5px; font-weight: 500; color: var(--text-3);
+  padding: 8px 14px; border-radius: var(--r-sm);
+  transition: color .18s, background .18s;
+  position: relative;
+}
+.nav-link:hover { color: var(--text); background: var(--surface); }
+.nav-link.active { color: var(--text); }
+.nav-link.active::after {
+  content: ''; position: absolute; left: 14px; right: 14px; bottom: 2px;
+  height: 1.5px; background: var(--accent); border-radius: 2px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 15px; border-radius: var(--r-sm);
+  font-size: 13.5px; font-weight: 500;
+  border: 1px solid var(--line-2); background: var(--surface); color: var(--text);
+  transition: background .18s, border-color .18s, transform .12s;
+}
+.btn:hover { background: var(--surface-2); border-color: #3a3a48; }
+.btn:active { transform: translateY(1px); }
+.btn--accent { background: var(--accent); border-color: var(--accent); color: #06241f; font-weight: 600; }
+.btn--accent:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* =================================================================
+   PAGE
+   ================================================================= */
+.page { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+.section { padding: 96px 0; border-top: 1px solid var(--line); }
+.section:first-of-type { border-top: none; }
+.section__head { max-width: 720px; margin-bottom: 48px; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 16px;
+}
+.eyebrow .num {
+  font-family: var(--mono); font-size: 11px;
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.22);
+  padding: 2px 7px; border-radius: 5px; color: var(--accent);
+}
+.section__title { font-size: 32px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 14px; }
+.section__sub { color: var(--text-2); font-size: 16px; line-height: 1.6; }
+
+/* =================================================================
+   HERO
+   ================================================================= */
+.hero {
+  min-height: 78vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 80px 0 60px; position: relative;
+}
+.hero__glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 50% at 50% 30%, rgba(94,234,212,.13), transparent 70%),
+    radial-gradient(30% 40% at 50% 90%, rgba(45,212,191,.06), transparent 70%);
+}
+.hero__badge {
+  position: relative; z-index: 2;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent);
+  padding: 6px 13px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.22);
+  margin-bottom: 28px;
+}
+.hero__badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2.4s infinite; box-shadow: 0 0 0 0 rgba(94,234,212,.6); }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(94,234,212,.5)} 70%{box-shadow:0 0 0 9px rgba(94,234,212,0)} 100%{box-shadow:0 0 0 0 rgba(94,234,212,0)} }
+
+.hero__title {
+  position: relative; z-index: 2;
+  font-size: 52px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;
+  margin-bottom: 20px; max-width: 16ch;
+}
+.hero__title em { font-style: normal; color: var(--accent); }
+.hero__sub {
+  position: relative; z-index: 2;
+  color: var(--text-2); font-size: 17px; max-width: 56ch; line-height: 1.6;
+}
+.hero__scroll {
+  position: relative; z-index: 2;
+  margin-top: 56px; color: var(--text-3);
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.hero__scroll .chev { animation: bob 1.8s ease-in-out infinite; }
+@keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+/* =================================================================
+   PIPELINE
+   ================================================================= */
+.pipeline {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: stretch;
+}
+.pipe-step {
+  position: relative;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 24px 20px; display: flex; flex-direction: column; gap: 14px;
+  transition: border-color .25s, transform .25s, background .25s;
+}
+.pipe-step:hover { border-color: rgba(94,234,212,.3); transform: translateY(-3px); background: var(--surface-2); }
+.pipe-step__top { display: flex; align-items: center; justify-content: space-between; }
+.pipe-step__icon {
+  width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
+  background: var(--bg); border: 1px solid var(--line); color: var(--accent);
+}
+.pipe-step__icon .ico { width: 21px; height: 21px; }
+.pipe-step__num {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  color: var(--text-4); letter-spacing: .04em;
+}
+.pipe-step__title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+.pipe-step__desc { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+.pipe-step__tag {
+  margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--line-2);
+  font-family: var(--mono); font-size: 11.5px; color: var(--text-2);
+}
+/* arrows between (desktop) */
+.pipe-arrow {
+  position: absolute; top: 50%; right: -11px; transform: translateY(-50%);
+  z-index: 2; color: var(--accent); background: var(--bg);
+  width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+}
+
+/* =================================================================
+   GENERIC PANELS / CARDS
+   ================================================================= */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 28px; }
+.panel--inset { background: var(--bg-2); border-color: var(--line); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.callout {
+  background: var(--bg-2); border: 1px solid var(--line); border-left: 2px solid var(--accent);
+  border-radius: var(--r-md); padding: 24px 26px;
+}
+.callout__title { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 18px; letter-spacing: -0.01em; }
+.jd-line { font-family: var(--mono); font-size: 13px; color: var(--text-2); margin-bottom: 18px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.compare-row { display: grid; grid-template-columns: 120px 1fr 90px; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.compare-row:first-of-type { border-top: none; }
+.compare-row .label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.compare-row .label.bad { color: var(--bad); }
+.compare-row .label.good { color: var(--good); }
+.compare-row .text { font-family: var(--mono); font-size: 13px; color: var(--text-2); }
+.compare-row .pct { font-family: var(--mono); font-size: 18px; font-weight: 600; text-align: right; }
+.compare-row .pct.bad { color: var(--bad); }
+.compare-row .pct.good { color: var(--good); }
+
+/* mini flow diagram */
+.mini-flow { display: flex; align-items: stretch; gap: 10px; margin-top: 8px; }
+.mini-flow__node {
+  flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 16px 14px; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; justify-content: center;
+}
+.mini-flow__node .tag { font-size: 10.5px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; }
+.mini-flow__node .val { font-family: var(--mono); font-size: 13px; color: var(--text); }
+.mini-flow__node .ico { color: var(--accent); }
+.mini-flow__arr { display: grid; place-items: center; color: var(--text-4); }
+.mini-flow__arr .ico { width: 20px; height: 20px; }
+
+/* formula box */
+.formula {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 26px 24px; text-align: center; margin-top: 8px;
+}
+.formula__eq {
+  font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text);
+  letter-spacing: -0.01em; margin-bottom: 8px;
+}
+.formula__eq .acc { color: var(--accent); }
+.formula__eq .var { color: var(--text-2); }
+.formula__caption { font-size: 12.5px; color: var(--text-3); }
+.formula__frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 4px; }
+.formula__frac .top { padding: 0 8px 4px; border-bottom: 1.5px solid var(--text-3); }
+.formula__frac .bot { padding: 4px 8px 0; }
+
+/* =================================================================
+   SIGNALS TABLE
+   ================================================================= */
+.table-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: var(--surface); text-align: left; font-size: 10.5px; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--text-3);
+  padding: 15px 24px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+tbody td { padding: 14px 24px; border-bottom: 1px solid var(--line); font-size: 14px; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .16s; }
+tbody tr:hover { background: var(--surface-2); }
+.sig-name { font-weight: 500; color: var(--text); }
+.sig-type, .sig-weight { font-family: var(--mono); font-size: 13px; color: var(--text-2); }
+.dir-up { color: var(--good); }
+.dir-down { color: var(--mid); }
+.weight-tag { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-family: var(--mono); }
+.weight-high { background: rgba(94,234,212,.10); color: var(--accent); border: 1px solid rgba(94,234,212,.22); }
+.weight-med { background: rgba(165,171,184,.08); color: var(--text-2); border: 1px solid var(--line-2); }
+.weight-low { background: rgba(73,76,86,.18); color: var(--text-3); border: 1px solid var(--line); }
+.sig-more td { text-align: center; color: var(--text-3); font-size: 13px; font-style: italic; background: var(--bg-2); }
+
+/* =================================================================
+   FUSION
+   ================================================================= */
+.fusion-eq {
+  background: var(--bg-2); border: 1px solid rgba(94,234,212,.28);
+  border-radius: var(--r-lg); padding: 36px 28px; text-align: center;
+}
+.fusion-eq__line {
+  font-family: var(--mono); font-size: 26px; font-weight: 500; letter-spacing: -0.01em;
+  display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
+}
+.fusion-eq__line .acc { color: var(--accent); }
+.fusion-eq__line .grn { color: var(--good); }
+.fusion-eq__line .op { color: var(--text-4); }
+.fusion-eq__line .num { font-weight: 600; }
+
+.weight-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.weight-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px; }
+.weight-card__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.weight-card__title { font-size: 15px; font-weight: 600; }
+.weight-card__pct { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.weight-card.sem .weight-card__pct { color: var(--accent); }
+.weight-card.beh .weight-card__pct { color: var(--good); }
+.weight-card__sub { font-size: 13px; color: var(--text-3); margin-bottom: 22px; }
+.weight-bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.weight-bar__fill { height: 100%; border-radius: 999px; width: 0; transition: width 1.6s cubic-bezier(.16,.84,.44,1); }
+.weight-card.sem .weight-bar__fill { background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+.weight-card.beh .weight-bar__fill { background: linear-gradient(90deg, #22c55e, var(--good)); }
+
+.why-box {
+  margin-top: 20px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 20px 24px; display: flex; gap: 14px; align-items: flex-start;
+}
+.why-box .ico { color: var(--accent); margin-top: 2px; }
+.why-box p { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+/* =================================================================
+   MODEL COMPARISON
+   ================================================================= */
+.cmp-col-h {
+  background: var(--surface); text-align: center; font-size: 14px; font-weight: 600;
+  padding: 18px 16px; border-bottom: 1px solid var(--line);
+}
+.cmp-col-h .pick {
+  display: inline-block; margin-top: 5px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid rgba(94,234,212,.22); padding: 2px 8px; border-radius: 5px;
+}
+.cmp-col-h.alt .pick { color: var(--text-3); background: var(--surface-2); border-color: var(--line-2); }
+.cmp-table .cmp-row { display: grid; grid-template-columns: 1.1fr 1fr 1fr; }
+.cmp-label { padding: 16px 24px; font-size: 13px; color: var(--text-3); border-bottom: 1px solid var(--line); display: flex; align-items: center; }
+.cmp-cell { padding: 16px 16px; font-family: var(--mono); font-size: 13.5px; color: var(--text-2); border-bottom: 1px solid var(--line); text-align: center; display: flex; align-items: center; justify-content: center; }
+.cmp-cell.chosen { background: rgba(94,234,212,.05); color: var(--text); }
+.cmp-cell .good { color: var(--good); font-weight: 600; }
+.cmp-row:last-child > div { border-bottom: none; }
+
+/* =================================================================
+   RESULTS / COUNTERS
+   ================================================================= */
+.results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.result {
+  background: var(--surface); padding: 30px 26px; display: flex; flex-direction: column; gap: 10px;
+  text-align: center; align-items: center;
+}
+.result__num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 36px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+.result__num .suffix { font-size: 18px; color: var(--text-3); }
+.result__label { font-size: 12px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; }
+.results-cta { text-align: center; margin-top: 36px; }
+
+/* =================================================================
+   FOOTER
+   ================================================================= */
+.footer { border-top: 1px solid var(--line); background: var(--bg-2); margin-top: 64px; }
+.footer__inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 22px 32px;
+  display: flex; flex-wrap: wrap; gap: 6px 0; align-items: center; justify-content: space-between;
+}
+.footer__left { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: 12.5px; color: var(--text-3); }
+.footer__left .sep { color: var(--line-2); }
+.footer__left code { font-family: var(--mono); color: var(--text-2); font-size: 12px; }
+.footer__right { font-size: 11.5px; color: var(--text-4); }
+
+/* =================================================================
+   SCROLL ANIMATIONS
+   ================================================================= */
+.reveal-up { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.16,.84,.44,1), transform .7s cubic-bezier(.16,.84,.44,1); }
+.reveal-up.visible { opacity: 1; transform: translateY(0); }
+.reveal-scale { opacity: 0; transform: scale(.96); transition: opacity .7s ease, transform .7s ease; }
+.reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+/* stagger via inline --d delay */
+.stagger > * { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+.stagger.visible > * { opacity: 1; transform: translateY(0); }
+.stagger > * { transition-delay: calc(var(--d, 0) * 90ms); }
+
+/* =================================================================
+   RESPONSIVE
+   ================================================================= */
+@media (max-width: 1024px) {
+  .pipeline { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; }
+  .pipe-arrow { display: none; }
+  .pipe-step::after {
+    content: ''; display: block; width: 1px; height: 24px; margin: 4px auto 0;
+    background: linear-gradient(var(--accent), transparent);
+  }
+  .pipe-step:last-child::after { display: none; }
+  .grid-2, .weight-cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .section { padding: 64px 0; }
+  .section__title { font-size: 26px; }
+  .hero__title { font-size: 38px; }
+  .hero__sub { font-size: 15px; }
+  .results-grid { grid-template-columns: repeat(2, 1fr); }
+  .fusion-eq__line { font-size: 18px; }
+  .page { padding: 0 20px; }
+  .navbar__inner { padding: 0 20px; }
+  .brand__sub { display: none; }
+  .compare-row { grid-template-columns: 90px 1fr 70px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .reveal-up, .reveal-scale, .stagger > * { opacity: 1 !important; transform: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- ===================== ICON SPRITE ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5" stroke-width="1.5"/><circle cx="16" cy="16" r="4" fill="currentColor" stroke="none"/><path d="M16 3.5v6M16 22.5v6M3.5 16h6M22.5 16h6"/></symbol>
+  <symbol id="i-ingest" viewBox="0 0 24 24"><path d="M4 7h16M4 7l3-3M4 7l3 3"/><path d="M20 17H4m16 0-3-3m3 3-3 3"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4.5a2.5 2.5 0 0 0-2.5 2.5v.5A2.5 2.5 0 0 0 4 10v2a2.5 2.5 0 0 0 1.5 2.3V16a2.5 2.5 0 0 0 2.5 2.5h.5V4.5H9Z"/><path d="M15 4.5a2.5 2.5 0 0 1 2.5 2.5v.5A2.5 2.5 0 0 1 20 10v2a2.5 2.5 0 0 1-1.5 2.3V16A2.5 2.5 0 0 1 16 18.5h-.5V4.5H15Z"/></symbol>
+  <symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><rect x="7.5" y="12" width="2.6" height="5" rx="1"/><rect x="12" y="8" width="2.6" height="9" rx="1"/><rect x="16.5" y="14" width="2.6" height="3" rx="1"/></symbol>
+  <symbol id="i-fusion" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4.5"/><circle cx="16" cy="12" r="4.5"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 5.5H4.5a2 2 0 0 0 0 4H7M17 5.5h2.5a2 2 0 0 1 0 4H17M10 13.5v3M14 13.5v3M7.5 20h9M9 20v-1.5h6V20"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-encode" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="8" rx="2"/><path d="M7 8v8M11 8v8M15 8v8M19 8 17 8m2 8-2 0"/></symbol>
+  <symbol id="i-vector" viewBox="0 0 24 24"><path d="M5 5v6a4 4 0 0 0 4 4h6"/><circle cx="5" cy="5" r="2"/><circle cx="15" cy="15" r="2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></symbol>
+  <symbol id="i-arrow-r-bold" viewBox="0 0 24 24"><path d="M4 12h15M13 5l7 7-7 7"/></symbol>
+</svg>
+
+<!-- ===================== NAVBAR ===================== -->
+<header class="navbar">
+  <div class="navbar__inner">
+    <a href="dashboard.html" class="brand">
+      <div class="brand__mark"><svg class="ico"><use href="#i-logo"/></svg></div>
+      <div class="brand__txt">
+        <span class="brand__name">Candidate Discovery Engine</span>
+        <span class="brand__sub">AI Ranking System</span>
+      </div>
+    </a>
+    <nav class="nav-links">
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="methodology.html" class="nav-link active">Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero reveal-scale">
+    <div class="hero__glow"></div>
+    <span class="hero__badge"><span class="pulse"></span>The Pipeline</span>
+    <h1 class="hero__title">How we find the <em>best-fit</em> candidates.</h1>
+    <p class="hero__sub">A hybrid engine that fuses semantic resume understanding with behavioural intelligence to rank 100,000 candidates — transparently, in under five minutes.</p>
+    <div class="hero__scroll">
+      <span>Scroll to explore</span>
+      <svg class="ico ico-lg chev"><use href="#i-chev-down"/></svg>
+    </div>
+  </section>
+
+  <!-- ===================== PIPELINE ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">01</span>Pipeline Overview</span>
+      <h2 class="section__title">Five stages, one fit score.</h2>
+      <p class="section__sub">Raw candidate data flows through ingestion, semantic matching, signal normalisation, weighted fusion and final ranking — each stage reducing 100,000 profiles toward a transparent shortlist.</p>
+    </div>
+
+    <div class="pipeline stagger reveal-up" data-stagger>
+      <div class="pipe-step" style="--d:0">
+        <div class="pipe-step__top">
+          <div class="pipe-step__icon"><svg class="ico"><use href="#i-ingest"/></svg></div>
+          <span class="pipe-step__num">01</span>
+        </div>
+        <div class="pipe-step__title">Data Ingestion</div>
+        <div class="pipe-step__desc">Load 100K candidate profiles from JSON and parse the job description from the Word document.</div>
+        <div class="pipe-step__tag">100K profiles</div>
+        <div class="pipe-arrow"><svg class="ico ico-sm"><use href="#i-arrow-r"/></svg></div>
+      </div>
+      <div class="pipe-step" style="--d:1">
+        <div class="pipe-step__top">
+          <div class="pipe-step__icon"><svg class="ico"><use href="#i-brain"/></svg></div>
+          <span class="pipe-step__num">02</span>
+        </div>
+        <div class="pipe-step__title">Semantic Matching</div>
+        <div class="pipe-step__desc">AI converts text to vectors and compares meaning using cosine similarity against the job.</div>
+        <div class="pipe-step__tag">all-MiniLM-L6-v2</div>
+        <div class="pipe-arrow"><svg class="ico ico-sm"><use href="#i-arrow-r"/></svg></div>
+      </div>
+      <div class="pipe-step" style="--d:2">
+        <div class="pipe-step__top">
+          <div class="pipe-step__icon"><svg class="ico"><use href="#i-signal"/></svg></div>
+          <span class="pipe-step__num">03</span>
+        </div>
+        <div class="pipe-step__title">Signal Scoring</div>
+        <div class="pipe-step__desc">Nineteen behavioural metrics — activity, responsiveness, completeness — are MinMax-scaled to 0–1.</div>
+        <div class="pipe-step__tag">MinMax scaling</div>
+        <div class="pipe-arrow"><svg class="ico ico-sm"><use href="#i-arrow-r"/></svg></div>
+      </div>
+      <div class="pipe-step" style="--d:3">
+        <div class="pipe-step__top">
+          <div class="pipe-step__icon"><svg class="ico"><use href="#i-fusion"/></svg></div>
+          <span class="pipe-step__num">04</span>
+        </div>
+        <div class="pipe-step__title">Score Fusion</div>
+        <div class="pipe-step__desc">Combine semantic and behavioural scores with a weighted blend into a single final score.</div>
+        <div class="pipe-step__tag">0.7 + 0.3 blend</div>
+        <div class="pipe-arrow"><svg class="ico ico-sm"><use href="#i-arrow-r"/></svg></div>
+      </div>
+      <div class="pipe-step" style="--d:4">
+        <div class="pipe-step__top">
+          <div class="pipe-step__icon"><svg class="ico"><use href="#i-trophy"/></svg></div>
+          <span class="pipe-step__num">05</span>
+        </div>
+        <div class="pipe-step__title">Rank &amp; Output</div>
+        <div class="pipe-step__desc">Sort by final score, extract the top 100 and validate the CSV against the submission spec.</div>
+        <div class="pipe-step__tag">Top 100 CSV</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SEMANTIC DEEP DIVE ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">02</span>Stage 02 · Semantic Matching</span>
+      <h2 class="section__title">Meaning, not keywords.</h2>
+      <p class="section__sub">Traditional keyword search misses candidates who describe the same skill with different words. Embedding-based matching understands intent — so a "language prediction system" still matches an "NLP engineer" requirement.</p>
+    </div>
+
+    <div class="callout reveal-scale">
+      <div class="callout__title">The keyword problem</div>
+      <div class="jd-line"><span style="color:var(--text-3)">JD says:</span>&nbsp; "Machine Learning Engineer with NLP experience"</div>
+      <div class="compare-row">
+        <span class="label bad">Keyword</span>
+        <span class="text">"AI developer building language prediction systems"</span>
+        <span class="pct bad">0%</span>
+      </div>
+      <div class="compare-row">
+        <span class="label good">Semantic</span>
+        <span class="text">"AI developer building language prediction systems"</span>
+        <span class="pct good">87%</span>
+      </div>
+    </div>
+
+    <div class="panel reveal-up" style="margin-top:20px">
+      <div class="callout__title">From text to vector</div>
+      <div class="mini-flow">
+        <div class="mini-flow__node">
+          <svg class="ico ico-lg"><use href="#i-brain"/></svg>
+          <span class="tag">Input text</span>
+          <span class="val">"ML eng with NLP"</span>
+        </div>
+        <div class="mini-flow__arr"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
+        <div class="mini-flow__node">
+          <svg class="ico ico-lg"><use href="#i-encode"/></svg>
+          <span class="tag">Encoder · all-MiniLM-L6-v2</span>
+          <span class="val">384-dim vector</span>
+        </div>
+        <div class="mini-flow__arr"><svg class="ico"><use href="#i-arrow-r"/></svg></div>
+        <div class="mini-flow__node">
+          <svg class="ico ico-lg"><use href="#i-vector"/></svg>
+          <span class="tag">Embedding</span>
+          <span class="val">[0.23, 0.87, -0.12, …]</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula reveal-up" style="margin-top:20px">
+      <div class="formula__eq">
+        cos(<span class="acc">θ</span>) <span class="op">=</span>
+        <span class="formula__frac">
+          <span class="top"><span class="var">A</span> · <span class="var">B</span></span>
+          <span class="bot">‖<span class="var">A</span>‖ × ‖<span class="var">B</span>‖</span>
+        </span>
+      </div>
+      <div class="formula__caption">Cosine similarity · score ranges 0.0 (unrelated) → 1.0 (identical meaning)</div>
+    </div>
+  </section>
+
+  <!-- ===================== BEHAVIOURAL DEEP DIVE ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">03</span>Stage 03 · Behavioural Signals</span>
+      <h2 class="section__title">Nineteen signals, normalised.</h2>
+      <p class="section__sub">Activity, responsiveness and profile completeness are captured across 19 metrics per candidate. Each is MinMax-scaled to a 0–1 range so disparate units become directly comparable.</p>
+    </div>
+
+    <div class="table-card reveal-scale">
+      <table>
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>Type</th>
+            <th>Direction</th>
+            <th>Weight</th>
+          </tr>
+        </thead>
+        <tbody id="sig-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="formula reveal-up" style="margin-top:20px">
+      <div class="formula__eq">
+        <span class="var">x</span><sub class="acc">scaled</sub> <span class="op">=</span>
+        <span class="formula__frac">
+          <span class="top"><span class="var">x</span> − <span class="var">x</span><sub>min</sub></span>
+          <span class="bot"><span class="var">x</span><sub>max</sub> − <span class="var">x</span><sub>min</sub></span>
+        </span>
+        <span style="margin-left:18px" class="op">→</span> &nbsp; invert (1 − <span class="var">x</span><sub>scaled</sub>) for "lower is better"
+      </div>
+      <div class="formula__caption">MinMax normalisation · all signals mapped to a 0.0 → 1.0 range</div>
+    </div>
+  </section>
+
+  <!-- ===================== FUSION DEEP DIVE ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">04</span>Stage 04 · Score Fusion</span>
+      <h2 class="section__title">Two dimensions, one score.</h2>
+      <p class="section__sub">The semantic and behavioural scores are blended into a single fit score. Weights reflect which dimension matters more for genuine job fit.</p>
+    </div>
+
+    <div class="fusion-eq reveal-scale">
+      <div class="fusion-eq__line">
+        <span style="color:var(--text-2)">Final Score</span>
+        <span class="op">=</span>
+        <span class="num acc">0.7</span><span class="acc"> × Semantic</span>
+        <span class="op">+</span>
+        <span class="num grn">0.3</span><span class="grn"> × Behavioural</span>
+      </div>
+    </div>
+
+    <div class="weight-cards" style="margin-top:20px">
+      <div class="weight-card sem reveal-up" data-weight="70">
+        <div class="weight-card__head">
+          <span class="weight-card__title">Semantic</span>
+          <span class="weight-card__pct">70%</span>
+        </div>
+        <div class="weight-card__sub">Resume-to-job meaning match</div>
+        <div class="weight-bar"><div class="weight-bar__fill"></div></div>
+      </div>
+      <div class="weight-card beh reveal-up" data-weight="30">
+        <div class="weight-card__head">
+          <span class="weight-card__title">Behavioural</span>
+          <span class="weight-card__pct">30%</span>
+        </div>
+        <div class="weight-card__sub">Platform engagement &amp; activity</div>
+        <div class="weight-bar"><div class="weight-bar__fill"></div></div>
+      </div>
+    </div>
+
+    <div class="why-box reveal-up">
+      <svg class="ico"><use href="#i-info"/></svg>
+      <p><b style="color:var(--text)">Why 70/30?</b> Skills and experience — the semantic dimension — matter most for genuine job fit. But a candidate who is active and responsive is far more likely to actually engage, so behavioural signals earn a meaningful 30% weight rather than being ignored.</p>
+    </div>
+  </section>
+
+  <!-- ===================== MODEL COMPARISON ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">05</span>Model Selection</span>
+      <h2 class="section__title">Chosen for the compute budget.</h2>
+      <p class="section__sub">We evaluated two open-source embedding models. MiniLM wins on the metric that matters most for a hackathon — throughput within the five-minute window — while keeping accuracy strong.</p>
+    </div>
+
+    <div class="table-card reveal-scale">
+      <div class="cmp-table">
+        <div class="cmp-row" style="grid-template-columns:1.1fr 1fr 1fr">
+          <div class="cmp-col-h" style="text-align:left;padding-left:24px">Attribute</div>
+          <div class="cmp-col-h">all-MiniLM-L6-v2 <span class="pick">Our choice</span></div>
+          <div class="cmp-col-h alt">BGE-base-en-v1.5 <span class="pick">Alternative</span></div>
+        </div>
+        <div id="cmp-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RESULTS ===================== -->
+  <section class="section">
+    <div class="section__head reveal-up">
+      <span class="eyebrow"><span class="num">06</span>Results at a Glance</span>
+      <h2 class="section__title">Pipeline in numbers.</h2>
+      <p class="section__sub">From a 100,000-candidate pool to a validated, ranked shortlist — here is what the engine processed end to end.</p>
+    </div>
+
+    <div class="results-grid stagger reveal-up" data-stagger>
+      <div class="result" style="--d:0">
+        <div class="result__num"><span class="counter" data-to="100000">0</span></div>
+        <div class="result__label">Candidates Processed</div>
+      </div>
+      <div class="result" style="--d:1">
+        <div class="result__num"><span class="counter" data-to="100">0</span></div>
+        <div class="result__label">Shortlist Output</div>
+      </div>
+      <div class="result" style="--d:2">
+        <div class="result__num"><span class="counter" data-to="0.6663" data-decimals="4">0</span></div>
+        <div class="result__label">Top Score</div>
+      </div>
+      <div class="result" style="--d:3">
+        <div class="result__num"><span class="counter" data-to="19">0</span></div>
+        <div class="result__label">Signals Analysed</div>
+      </div>
+    </div>
+
+    <div class="results-cta reveal-up">
+      <a href="dashboard.html" class="btn btn--accent">View the ranked dashboard
+        <svg class="ico ico-sm"><use href="#i-arrow-r-bold"/></svg>
+      </a>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__left">
+      <span>Built for RedRob AI Hackathon 2025</span>
+      <span class="sep">·</span>
+      <span>Powered by <code>sentence-transformers</code></span>
+      <span class="sep">·</span>
+      <span>Model <code>all-MiniLM-L6-v2</code></span>
+    </div>
+    <div class="footer__right">Team AI Rankers</div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   SIGNALS TABLE DATA
+   ============================================================ */
+const SIGNALS = [
+  { name: 'Profile Completeness',   type: '0–100%',   dir: 'up',   weight: 'high' },
+  { name: 'Response Time',          type: 'hours ≥ 0', dir: 'down', weight: 'high' },
+  { name: 'Profile Views (30d)',    type: '≥ 0',      dir: 'up',   weight: 'med'  },
+  { name: 'Applications Sent (30d)',type: '≥ 0',      dir: 'up',   weight: 'med'  },
+  { name: 'GitHub Activity Score',  type: '0–100',    dir: 'up',   weight: 'med'  },
+  { name: 'Endorsements Received',  type: '≥ 0',      dir: 'up',   weight: 'low'  },
+  { name: 'Recruiter Response Rate',type: '0.0–1.0',  dir: 'up',   weight: 'med'  },
+  { name: 'Open to Work Flag',      type: 'Yes / No', dir: 'up',   weight: 'med'  }
+];
+
+const DIR = { up: { c: 'dir-up', g: '↑', t: 'Higher is better' }, down: { c: 'dir-down', g: '↓', t: 'Lower is better' } };
+const WT  = { high: { c: 'weight-high', t: 'High' }, med: { c: 'weight-med', t: 'Medium' }, low: { c: 'weight-low', t: 'Low' } };
+
+const sigTbody = document.getElementById('sig-tbody');
+SIGNALS.forEach(s => {
+  const d = DIR[s.dir], w = WT[s.weight];
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="sig-name">${s.name}</td>
+    <td class="sig-type">${s.type}</td>
+    <td><span class="${d.c}">${d.g} ${d.t}</span></td>
+    <td><span class="weight-tag ${w.c}">${w.t}</span></td>`;
+  sigTbody.appendChild(tr);
+});
+const more = document.createElement('tr'); more.className = 'sig-more';
+more.innerHTML = `<td colspan="4">… and 11 more signals (skills, certifications, connection depth, etc.)</td>`;
+sigTbody.appendChild(more);
+
+/* ============================================================
+   MODEL COMPARISON TABLE DATA
+   ============================================================ */
+const CMP_ROWS = [
+  { label: 'Provider',          a: 'sentence-transformers', b: 'BAAI' },
+  { label: 'Size',              a: '~80 MB',                b: '~420 MB' },
+  { label: 'Vector Dimensions', a: '384',                   b: '768' },
+  { label: 'Speed (100K)',      a: '~5 min',                b: '~90 min' },
+  { label: 'Accuracy',          a: 'Good',                  b: 'Higher' },
+  { label: 'RAM Usage',         a: '~2 GB',                 b: '~6 GB' },
+  { label: 'GPU Required',      a: 'No',  aGood: true,      b: 'No', bGood: true }
+];
+const cmpBody = document.getElementById('cmp-body');
+CMP_ROWS.forEach(r => {
+  const row = document.createElement('div');
+  row.className = 'cmp-row';
+  row.innerHTML = `
+    <div class="cmp-label">${r.label}</div>
+    <div class="cmp-cell chosen">${r.aGood ? '<span class="good">✓</span> ' : ''}${r.a}</div>
+    <div class="cmp-cell">${r.bGood ? '<span class="good">✓</span> ' : ''}${r.b}</div>`;
+  cmpBody.appendChild(row);
+});
+
+/* ============================================================
+   SCROLL ANIMATIONS (IntersectionObserver, fire once)
+   ============================================================ */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      io.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+
+document.querySelectorAll('.reveal-up, .reveal-scale, .stagger').forEach(el => io.observe(el));
+
+/* weight bars animate when their card becomes visible */
+const weightObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const card = entry.target;
+      const fill = card.querySelector('.weight-bar__fill');
+      if (fill) fill.style.width = card.dataset.weight + '%';
+      weightObserver.unobserve(card);
+    }
+  });
+}, { threshold: 0.4 });
+document.querySelectorAll('.weight-card').forEach(c => weightObserver.observe(c));
+
+/* ============================================================
+   COUNT-UP COUNTERS
+   ============================================================ */
+function animateCounter(el) {
+  const to = parseFloat(el.dataset.to);
+  const decimals = parseInt(el.dataset.decimals || '0', 10);
+  const duration = 1600;
+  const start = performance.now();
+  function frame(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    const val = to * eased;
+    el.textContent = decimals
+      ? val.toFixed(decimals)
+      : Math.round(val).toLocaleString('en-US');
+    if (p < 1) requestAnimationFrame(frame);
+    else el.textContent = decimals ? to.toFixed(decimals) : to.toLocaleString('en-US');
+  }
+  requestAnimationFrame(frame);
+}
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) { animateCounter(entry.target); counterObserver.unobserve(entry.target); }
+  });
+}, { threshold: 0.6 });
+document.querySelectorAll('.counter').forEach(c => counterObserver.observe(c));
+</script>
+</body>
+</html>

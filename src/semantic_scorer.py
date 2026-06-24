@@ -349,6 +349,18 @@ def compute_semantic_scores(job_description: str,
     # to candidate_ids[i].
     profile_texts = [candidate_profiles[cid] for cid in candidate_ids]
 
+    # --- TEXT SANITISATION (prevents [Errno 22] Invalid argument) ----------
+    # Some candidate profiles contain null bytes (\x00), surrogate code
+    # points, or other characters that the tokeniser's underlying file I/O
+    # or C extension cannot handle on Windows.  We strip them here.
+    def _sanitise(text: str) -> str:
+        if not isinstance(text, str):
+            return ""
+        # Remove null bytes and other C0 control chars except common whitespace
+        return text.replace("\x00", "").encode("utf-8", errors="ignore").decode("utf-8")
+
+    profile_texts = [_sanitise(t) for t in profile_texts]
+
     # Sanity-check: every profile must be a non-empty string. We skip empties
     # in scoring (assign them 0.0) rather than crashing the whole batch.
     for cid, text in zip(candidate_ids, profile_texts):
@@ -375,19 +387,31 @@ def compute_semantic_scores(job_description: str,
             f"Failed to encode the job description with '{model_name}': {e}"
         ) from e
 
-    # --- Step (c): encode ALL candidate profiles in ONE batch --------------
-    # This is the key performance trick. Encoding N profiles in a single
-    # encode() call is much faster than looping N times, because the model
-    # processes the whole batch in parallel and amortizes Python overhead.
-    print(f"Encoding {len(profile_texts)} candidates...")
+    # --- Step (c): encode candidate profiles in memory-friendly CHUNKS ------
+    # Encoding all 100K profiles in one encode() call can exhaust RAM because
+    # sentence-transformers tokenises the full list up-front.  Instead we
+    # split into chunks of CHUNK_SIZE, encode each chunk, and stitch the
+    # resulting numpy arrays together at the end.  This caps peak memory at
+    # roughly (CHUNK_SIZE × avg_tokens × model_dims) instead of (N × ...).
+    CHUNK_SIZE = 5_000  # 5 000 profiles per chunk — safe for 8 GB machines
+    print(f"Encoding {len(profile_texts)} candidates (in chunks of {CHUNK_SIZE})...")
     try:
-        # encode() on a list of strings returns a 2-D numpy array of shape
-        # (N, vector_dimensions) — one row per candidate, in input order.
-        candidate_vectors = model.encode(
-            profile_texts,
-            show_progress_bar=True,
-            batch_size=32,  # 32 at a time balances speed vs RAM. Tune if needed.
-        )
+        chunk_vectors = []
+        for chunk_start in range(0, len(profile_texts), CHUNK_SIZE):
+            chunk_end = min(chunk_start + CHUNK_SIZE, len(profile_texts))
+            chunk_num = chunk_start // CHUNK_SIZE + 1
+            total_chunks = (len(profile_texts) + CHUNK_SIZE - 1) // CHUNK_SIZE
+            print(f"  Chunk {chunk_num}/{total_chunks} "
+                  f"(candidates {chunk_start+1}–{chunk_end})...")
+            vectors = model.encode(
+                profile_texts[chunk_start:chunk_end],
+                show_progress_bar=True,
+                batch_size=64,
+            )
+            chunk_vectors.append(vectors)
+        # Stack all chunks into one (N, dims) array
+        candidate_vectors = np.vstack(chunk_vectors)
+        del chunk_vectors  # free the duplicate memory immediately
     except Exception as e:
         raise RuntimeError(
             f"Failed to encode candidate profiles with '{model_name}': {e}"
