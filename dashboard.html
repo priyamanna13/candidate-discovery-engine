@@ -783,8 +783,8 @@ Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
    PARSING
    ============================================================ */
 function parseReasoning(reasoning) {
-  const sem = reasoning.match(/semantic match ([\d.]+)/);
-  const beh = reasoning.match(/behavioral engagement ([\d.]+)/);
+  const sem = (reasoning || '').match(/semantic match ([\d.]+)/);
+  const beh = (reasoning || '').match(/behavioral engagement ([\d.]+)/);
   return { semantic: sem ? parseFloat(sem[1]) : 0, behavioral: beh ? parseFloat(beh[1]) : 0 };
 }
 function parseCSV(text) {
@@ -808,16 +808,20 @@ function parseCSV(text) {
 }
 function normalizeCSV(rows) {
   if (!rows.length) return [];
-  const headers = rows[0].map(h => h.trim());
+  // Strip BOM if present
+  const headers = rows[0].map(h => h.trim().replace(/^\ufeff/, ''));
   const out = [];
   for (let i = 1; i < rows.length; i++) {
-    const r = rows[i]; if (!r.length) continue;
-    const obj = {}; headers.forEach((h, idx) => obj[h] = (r[idx] || '').trim());
-    const sub = parseReasoning(obj.reasoning || '');
+    const r = rows[i]; if (!r.length || r.every(v => v === '')) continue;
+    const obj = {}; headers.forEach((h, idx) => { if (h) obj[h] = (r[idx] || '').trim(); });
+    const sub = parseReasoning(obj.reasoning || obj.Reasoning || '');
     out.push({
-      candidate_id: obj.candidate_id, rank: parseInt(obj.rank, 10) || 0,
-      score: parseFloat(obj.score) || 0, reasoning: obj.reasoning || '',
-      semantic: sub.semantic, behavioral: sub.behavioral
+      candidate_id: obj.candidate_id || obj.Candidate_ID || obj.candidate || obj.ID || '',
+      rank: parseInt(obj.rank || obj.Rank, 10) || 0,
+      score: parseFloat(obj.score || obj.Score) || 0,
+      reasoning: obj.reasoning || obj.Reasoning || '',
+      semantic: sub.semantic,
+      behavioral: sub.behavioral
     });
   }
   return out;
@@ -825,8 +829,24 @@ function normalizeCSV(rows) {
 function loadData(rows, label) {
   DATA = rows.map(r => {
     const sub = parseReasoning(r.reasoning || '');
-    return { candidate_id:r.candidate_id, rank:r.rank, score:r.score, reasoning:r.reasoning, semantic:sub.semantic, behavioral:sub.behavioral };
+    return {
+      candidate_id: r.candidate_id || '',
+      rank: r.rank || 0,
+      score: r.score || 0,
+      reasoning: r.reasoning || '',
+      semantic: r.semantic !== undefined ? r.semantic : sub.semantic,
+      behavioral: r.behavioral !== undefined ? r.behavioral : sub.behavioral
+    };
   }).sort((a, b) => a.rank - b.rank);
+
+  // Clear query and reset score selectors value to force rebuilding from scratch
+  const searchInput = document.getElementById('search');
+  if (searchInput) searchInput.value = '';
+  const minSel = document.getElementById('min-score');
+  if (minSel) minSel.value = '';
+  const maxSel = document.getElementById('max-score');
+  if (maxSel) maxSel.value = '';
+
   document.querySelector('#dataset-pill b').textContent = label || 'Sample data';
   renderAll();
 }
@@ -834,8 +854,8 @@ function loadData(rows, label) {
 /* ============================================================
    HELPERS
    ============================================================ */
-const fmt  = n => n.toFixed(4);
-const fmt2 = n => n.toFixed(2);
+const fmt  = n => typeof n === 'number' ? n.toFixed(4) : '0.0000';
+const fmt2 = n => typeof n === 'number' ? n.toFixed(2) : '0.00';
 const scoreClass = v => v > 0.6 ? 'lvl-good' : v >= 0.5 ? 'lvl-mid' : 'lvl-low';
 function barColor(score, min, max) {
   const t = (max === min) ? 1 : (score - min) / (max - min);
@@ -879,7 +899,7 @@ function getFiltered() {
   const mn = parseFloat(document.getElementById('min-score').value) || 0;
   const mx = parseFloat(document.getElementById('max-score').value) || 1;
   const [lo, hi] = [Math.min(mn, mx), Math.max(mn, mx)];
-  let rows = DATA.filter(d => (!q || d.candidate_id.toLowerCase().includes(q)) && (d.score >= lo && d.score <= hi));
+  let rows = DATA.filter(d => (!q || (d.candidate_id || '').toLowerCase().includes(q)) && (d.score >= lo && d.score <= hi));
   rows.sort((a, b) => {
     let av = a[sortKey], bv = b[sortKey];
     if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
@@ -912,7 +932,7 @@ function renderTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="c-rank"><span class="rank-badge ${tier(d.rank)}">${d.rank}</span></td>
-      <td class="c-id"><span class="cand-id">${d.candidate_id}</span></td>
+      <td class="c-id"><span class="cand-id">${d.candidate_id || ''}</span></td>
       <td>
         <div class="score-cell">
           <div class="bar-track"><div class="bar-fill" style="width:${fillPct}%;background:${color}"></div></div>
@@ -931,13 +951,13 @@ function renderTable() {
         <div class="detail-inner">
           <div class="detail-body">
             <div class="lbl">Reasoning</div>
-            <p>${escapeHtml(d.reasoning)}</p>
+            <p>${escapeHtml(d.reasoning || '')}</p>
             <div class="detail-meta">
-              <div><span class="k">Candidate</span><span class="v">${d.candidate_id}</span></div>
-              <div><span class="k">Rank</span><span class="v">#${d.rank}</span></div>
-              <div><span class="k">Final</span><span class="v">${fmt(d.score)}</span></div>
-              <div><span class="k">Semantic</span><span class="v">${fmt2(d.semantic)}</span></div>
-              <div><span class="k">Behavioural</span><span class="v">${fmt2(d.behavioral)}</span></div>
+              <div><span class="k">Candidate</span><span class="v">${d.candidate_id || ''}</span></div>
+              <div><span class="k">Rank</span><span class="v">#${d.rank || ''}</span></div>
+              <div><span class="k">Final</span><span class="v">${fmt(d.score || 0)}</span></div>
+              <div><span class="k">Semantic</span><span class="v">${fmt2(d.semantic || 0)}</span></div>
+              <div><span class="k">Behavioural</span><span class="v">${fmt2(d.behavioral || 0)}</span></div>
             </div>
           </div>
         </div>
@@ -959,7 +979,7 @@ function renderTable() {
   tbody.appendChild(frag);
   updateSortIndicators();
 }
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeHtml(s){return String(s || '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function updateSortIndicators() {
   document.querySelectorAll('#leaderboard thead th[data-key]').forEach(th => {
     const arr = th.querySelector('.arr use');
@@ -1066,9 +1086,18 @@ function wireEvents() {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const rows = normalizeCSV(parseCSV(ev.target.result));
-      if (rows.length) loadData(rows, file.name);
-      else alert('Could not read any rows from that CSV.');
+      try {
+        const rawRows = parseCSV(ev.target.result);
+        const rows = normalizeCSV(rawRows);
+        if (rows.length) {
+          loadData(rows, file.name);
+        } else {
+          alert('Could not read any rows from that CSV.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error parsing CSV file: ' + err.message);
+      }
     };
     reader.readAsText(file);
     input.value = '';
