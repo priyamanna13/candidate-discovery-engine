@@ -757,16 +757,806 @@ tbody tr:hover { background: var(--surface-2); }
    SAMPLE FALLBACK DATA
    ============================================================ */
 const SAMPLE_DATA = [
-  {candidate_id:"CAND_0004402",rank:1,score:0.6663,reasoning:"Rank 1: blended fit 0.67 (semantic match 0.60, behavioral engagement 0.82). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0093193",rank:2,score:0.6661,reasoning:"Rank 2: blended fit 0.67 (semantic match 0.61, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0064326",rank:3,score:0.6644,reasoning:"Rank 3: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0081846",rank:4,score:0.6617,reasoning:"Rank 4: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.82). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0053591",rank:5,score:0.6611,reasoning:"Rank 5: blended fit 0.66 (semantic match 0.62, behavioral engagement 0.75). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0006567",rank:6,score:0.6585,reasoning:"Rank 6: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.77). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0046132",rank:7,score:0.6581,reasoning:"Rank 7: blended fit 0.66 (semantic match 0.58, behavioral engagement 0.83). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0054318",rank:8,score:0.6579,reasoning:"Rank 8: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0046525",rank:9,score:0.6578,reasoning:"Rank 9: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.80). Weaker fit — included as a lower-rank option."},
-  {candidate_id:"CAND_0002025",rank:10,score:0.6564,reasoning:"Rank 10: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit — included as a lower-rank option."}
+  {
+    "candidate_id": "CAND_0004402",
+    "rank": 1,
+    "score": 0.6663,
+    "reasoning": "Rank 1: blended fit 0.67 (semantic match 0.60, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0093193",
+    "rank": 2,
+    "score": 0.6661,
+    "reasoning": "Rank 2: blended fit 0.67 (semantic match 0.61, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0064326",
+    "rank": 3,
+    "score": 0.6644,
+    "reasoning": "Rank 3: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0081846",
+    "rank": 4,
+    "score": 0.6617,
+    "reasoning": "Rank 4: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0053591",
+    "rank": 5,
+    "score": 0.6611,
+    "reasoning": "Rank 5: blended fit 0.66 (semantic match 0.62, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.62,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0006567",
+    "rank": 6,
+    "score": 0.6585,
+    "reasoning": "Rank 6: blended fit 0.66 (semantic match 0.61, behavioral engagement 0.77). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.77
+  },
+  {
+    "candidate_id": "CAND_0046132",
+    "rank": 7,
+    "score": 0.6581,
+    "reasoning": "Rank 7: blended fit 0.66 (semantic match 0.58, behavioral engagement 0.83). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.83
+  },
+  {
+    "candidate_id": "CAND_0054318",
+    "rank": 8,
+    "score": 0.6579,
+    "reasoning": "Rank 8: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0046525",
+    "rank": 9,
+    "score": 0.6578,
+    "reasoning": "Rank 9: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0002025",
+    "rank": 10,
+    "score": 0.6564,
+    "reasoning": "Rank 10: blended fit 0.66 (semantic match 0.59, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0011327",
+    "rank": 11,
+    "score": 0.6556,
+    "reasoning": "Rank 11: blended fit 0.66 (semantic match 0.60, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0034164",
+    "rank": 12,
+    "score": 0.6543,
+    "reasoning": "Rank 12: blended fit 0.65 (semantic match 0.59, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0005538",
+    "rank": 13,
+    "score": 0.6542,
+    "reasoning": "Rank 13: blended fit 0.65 (semantic match 0.59, behavioral engagement 0.79). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.79
+  },
+  {
+    "candidate_id": "CAND_0055905",
+    "rank": 14,
+    "score": 0.6542,
+    "reasoning": "Rank 14: blended fit 0.65 (semantic match 0.60, behavioral engagement 0.78). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.78
+  },
+  {
+    "candidate_id": "CAND_0071974",
+    "rank": 15,
+    "score": 0.6527,
+    "reasoning": "Rank 15: blended fit 0.65 (semantic match 0.60, behavioral engagement 0.77). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.77
+  },
+  {
+    "candidate_id": "CAND_0084819",
+    "rank": 16,
+    "score": 0.6524,
+    "reasoning": "Rank 16: blended fit 0.65 (semantic match 0.60, behavioral engagement 0.78). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.78
+  },
+  {
+    "candidate_id": "CAND_0011687",
+    "rank": 17,
+    "score": 0.6477,
+    "reasoning": "Rank 17: blended fit 0.65 (semantic match 0.58, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0098454",
+    "rank": 18,
+    "score": 0.6472,
+    "reasoning": "Rank 18: blended fit 0.65 (semantic match 0.58, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0076831",
+    "rank": 19,
+    "score": 0.647,
+    "reasoning": "Rank 19: blended fit 0.65 (semantic match 0.62, behavioral engagement 0.70). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.62,
+    "behavioral": 0.7
+  },
+  {
+    "candidate_id": "CAND_0039754",
+    "rank": 20,
+    "score": 0.6459,
+    "reasoning": "Rank 20: blended fit 0.65 (semantic match 0.60, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0043860",
+    "rank": 21,
+    "score": 0.6455,
+    "reasoning": "Rank 21: blended fit 0.65 (semantic match 0.57, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0073007",
+    "rank": 22,
+    "score": 0.6455,
+    "reasoning": "Rank 22: blended fit 0.65 (semantic match 0.59, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0099806",
+    "rank": 23,
+    "score": 0.6448,
+    "reasoning": "Rank 23: blended fit 0.64 (semantic match 0.61, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0008425",
+    "rank": 24,
+    "score": 0.6444,
+    "reasoning": "Rank 24: blended fit 0.64 (semantic match 0.61, behavioral engagement 0.72). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.72
+  },
+  {
+    "candidate_id": "CAND_0053605",
+    "rank": 25,
+    "score": 0.6421,
+    "reasoning": "Rank 25: blended fit 0.64 (semantic match 0.56, behavioral engagement 0.83). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.83
+  },
+  {
+    "candidate_id": "CAND_0094685",
+    "rank": 26,
+    "score": 0.6408,
+    "reasoning": "Rank 26: blended fit 0.64 (semantic match 0.61, behavioral engagement 0.71). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.71
+  },
+  {
+    "candidate_id": "CAND_0079064",
+    "rank": 27,
+    "score": 0.6402,
+    "reasoning": "Rank 27: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0046064",
+    "rank": 28,
+    "score": 0.6385,
+    "reasoning": "Rank 28: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0041918",
+    "rank": 29,
+    "score": 0.6382,
+    "reasoning": "Rank 29: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0042506",
+    "rank": 30,
+    "score": 0.6382,
+    "reasoning": "Rank 30: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0018499",
+    "rank": 31,
+    "score": 0.6381,
+    "reasoning": "Rank 31: blended fit 0.64 (semantic match 0.56, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0070525",
+    "rank": 32,
+    "score": 0.638,
+    "reasoning": "Rank 32: blended fit 0.64 (semantic match 0.56, behavioral engagement 0.83). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.83
+  },
+  {
+    "candidate_id": "CAND_0077337",
+    "rank": 33,
+    "score": 0.6378,
+    "reasoning": "Rank 33: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0022484",
+    "rank": 34,
+    "score": 0.6376,
+    "reasoning": "Rank 34: blended fit 0.64 (semantic match 0.61, behavioral engagement 0.70). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.7
+  },
+  {
+    "candidate_id": "CAND_0088025",
+    "rank": 35,
+    "score": 0.6376,
+    "reasoning": "Rank 35: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0012256",
+    "rank": 36,
+    "score": 0.6369,
+    "reasoning": "Rank 36: blended fit 0.64 (semantic match 0.64, behavioral engagement 0.63). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.64,
+    "behavioral": 0.63
+  },
+  {
+    "candidate_id": "CAND_0051936",
+    "rank": 37,
+    "score": 0.6369,
+    "reasoning": "Rank 37: blended fit 0.64 (semantic match 0.56, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0043829",
+    "rank": 38,
+    "score": 0.6368,
+    "reasoning": "Rank 38: blended fit 0.64 (semantic match 0.58, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0098846",
+    "rank": 39,
+    "score": 0.6364,
+    "reasoning": "Rank 39: blended fit 0.64 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0052712",
+    "rank": 40,
+    "score": 0.6362,
+    "reasoning": "Rank 40: blended fit 0.64 (semantic match 0.58, behavioral engagement 0.77). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.77
+  },
+  {
+    "candidate_id": "CAND_0072688",
+    "rank": 41,
+    "score": 0.6358,
+    "reasoning": "Rank 41: blended fit 0.64 (semantic match 0.54, behavioral engagement 0.85). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.54,
+    "behavioral": 0.85
+  },
+  {
+    "candidate_id": "CAND_0007778",
+    "rank": 42,
+    "score": 0.6353,
+    "reasoning": "Rank 42: blended fit 0.64 (semantic match 0.62, behavioral engagement 0.67). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.62,
+    "behavioral": 0.67
+  },
+  {
+    "candidate_id": "CAND_0068932",
+    "rank": 43,
+    "score": 0.6347,
+    "reasoning": "Rank 43: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0075481",
+    "rank": 44,
+    "score": 0.6347,
+    "reasoning": "Rank 44: blended fit 0.63 (semantic match 0.55, behavioral engagement 0.84). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.55,
+    "behavioral": 0.84
+  },
+  {
+    "candidate_id": "CAND_0020991",
+    "rank": 45,
+    "score": 0.6341,
+    "reasoning": "Rank 45: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0073883",
+    "rank": 46,
+    "score": 0.6341,
+    "reasoning": "Rank 46: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0081852",
+    "rank": 47,
+    "score": 0.634,
+    "reasoning": "Rank 47: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0007008",
+    "rank": 48,
+    "score": 0.6339,
+    "reasoning": "Rank 48: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0024878",
+    "rank": 49,
+    "score": 0.6335,
+    "reasoning": "Rank 49: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0058688",
+    "rank": 50,
+    "score": 0.6333,
+    "reasoning": "Rank 50: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0062247",
+    "rank": 51,
+    "score": 0.6333,
+    "reasoning": "Rank 51: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0058575",
+    "rank": 52,
+    "score": 0.6328,
+    "reasoning": "Rank 52: blended fit 0.63 (semantic match 0.61, behavioral engagement 0.68). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.68
+  },
+  {
+    "candidate_id": "CAND_0040887",
+    "rank": 53,
+    "score": 0.6326,
+    "reasoning": "Rank 53: blended fit 0.63 (semantic match 0.54, behavioral engagement 0.84). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.54,
+    "behavioral": 0.84
+  },
+  {
+    "candidate_id": "CAND_0077498",
+    "rank": 54,
+    "score": 0.6321,
+    "reasoning": "Rank 54: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0023458",
+    "rank": 55,
+    "score": 0.6317,
+    "reasoning": "Rank 55: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0052335",
+    "rank": 56,
+    "score": 0.6314,
+    "reasoning": "Rank 56: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.73). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.73
+  },
+  {
+    "candidate_id": "CAND_0035879",
+    "rank": 57,
+    "score": 0.6309,
+    "reasoning": "Rank 57: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0071747",
+    "rank": 58,
+    "score": 0.6307,
+    "reasoning": "Rank 58: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0007596",
+    "rank": 59,
+    "score": 0.6306,
+    "reasoning": "Rank 59: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0021255",
+    "rank": 60,
+    "score": 0.6299,
+    "reasoning": "Rank 60: blended fit 0.63 (semantic match 0.62, behavioral engagement 0.65). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.62,
+    "behavioral": 0.65
+  },
+  {
+    "candidate_id": "CAND_0028527",
+    "rank": 61,
+    "score": 0.6297,
+    "reasoning": "Rank 61: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.78). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.78
+  },
+  {
+    "candidate_id": "CAND_0068351",
+    "rank": 62,
+    "score": 0.6297,
+    "reasoning": "Rank 62: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.73). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.73
+  },
+  {
+    "candidate_id": "CAND_0090300",
+    "rank": 63,
+    "score": 0.6296,
+    "reasoning": "Rank 63: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.79). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.79
+  },
+  {
+    "candidate_id": "CAND_0061257",
+    "rank": 64,
+    "score": 0.6294,
+    "reasoning": "Rank 64: blended fit 0.63 (semantic match 0.55, behavioral engagement 0.81). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.55,
+    "behavioral": 0.81
+  },
+  {
+    "candidate_id": "CAND_0099965",
+    "rank": 65,
+    "score": 0.6294,
+    "reasoning": "Rank 65: blended fit 0.63 (semantic match 0.57, behavioral engagement 0.77). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.77
+  },
+  {
+    "candidate_id": "CAND_0005085",
+    "rank": 66,
+    "score": 0.6292,
+    "reasoning": "Rank 66: blended fit 0.63 (semantic match 0.60, behavioral engagement 0.69). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.69
+  },
+  {
+    "candidate_id": "CAND_0021112",
+    "rank": 67,
+    "score": 0.629,
+    "reasoning": "Rank 67: blended fit 0.63 (semantic match 0.60, behavioral engagement 0.70). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.7
+  },
+  {
+    "candidate_id": "CAND_0055960",
+    "rank": 68,
+    "score": 0.629,
+    "reasoning": "Rank 68: blended fit 0.63 (semantic match 0.54, behavioral engagement 0.83). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.54,
+    "behavioral": 0.83
+  },
+  {
+    "candidate_id": "CAND_0019480",
+    "rank": 69,
+    "score": 0.6282,
+    "reasoning": "Rank 69: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.79). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.79
+  },
+  {
+    "candidate_id": "CAND_0045250",
+    "rank": 70,
+    "score": 0.6282,
+    "reasoning": "Rank 70: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.73). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.73
+  },
+  {
+    "candidate_id": "CAND_0048558",
+    "rank": 71,
+    "score": 0.6282,
+    "reasoning": "Rank 71: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0074735",
+    "rank": 72,
+    "score": 0.6279,
+    "reasoning": "Rank 72: blended fit 0.63 (semantic match 0.57, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0067866",
+    "rank": 73,
+    "score": 0.6277,
+    "reasoning": "Rank 73: blended fit 0.63 (semantic match 0.57, behavioral engagement 0.77). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.77
+  },
+  {
+    "candidate_id": "CAND_0007460",
+    "rank": 74,
+    "score": 0.6275,
+    "reasoning": "Rank 74: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.71). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.71
+  },
+  {
+    "candidate_id": "CAND_0087744",
+    "rank": 75,
+    "score": 0.6275,
+    "reasoning": "Rank 75: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0064904",
+    "rank": 76,
+    "score": 0.6273,
+    "reasoning": "Rank 76: blended fit 0.63 (semantic match 0.59, behavioral engagement 0.71). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.71
+  },
+  {
+    "candidate_id": "CAND_0065195",
+    "rank": 77,
+    "score": 0.6271,
+    "reasoning": "Rank 77: blended fit 0.63 (semantic match 0.58, behavioral engagement 0.73). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.73
+  },
+  {
+    "candidate_id": "CAND_0033179",
+    "rank": 78,
+    "score": 0.6265,
+    "reasoning": "Rank 78: blended fit 0.63 (semantic match 0.56, behavioral engagement 0.78). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.56,
+    "behavioral": 0.78
+  },
+  {
+    "candidate_id": "CAND_0052142",
+    "rank": 79,
+    "score": 0.6264,
+    "reasoning": "Rank 79: blended fit 0.63 (semantic match 0.62, behavioral engagement 0.65). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.62,
+    "behavioral": 0.65
+  },
+  {
+    "candidate_id": "CAND_0012840",
+    "rank": 80,
+    "score": 0.6258,
+    "reasoning": "Rank 80: blended fit 0.63 (semantic match 0.54, behavioral engagement 0.82). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.54,
+    "behavioral": 0.82
+  },
+  {
+    "candidate_id": "CAND_0016425",
+    "rank": 81,
+    "score": 0.6257,
+    "reasoning": "Rank 81: blended fit 0.63 (semantic match 0.63, behavioral engagement 0.60). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.63,
+    "behavioral": 0.6
+  },
+  {
+    "candidate_id": "CAND_0019288",
+    "rank": 82,
+    "score": 0.6255,
+    "reasoning": "Rank 82: blended fit 0.63 (semantic match 0.60, behavioral engagement 0.69). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.69
+  },
+  {
+    "candidate_id": "CAND_0053774",
+    "rank": 83,
+    "score": 0.6255,
+    "reasoning": "Rank 83: blended fit 0.63 (semantic match 0.65, behavioral engagement 0.58). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.65,
+    "behavioral": 0.58
+  },
+  {
+    "candidate_id": "CAND_0020708",
+    "rank": 84,
+    "score": 0.625,
+    "reasoning": "Rank 84: blended fit 0.62 (semantic match 0.57, behavioral engagement 0.76). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.76
+  },
+  {
+    "candidate_id": "CAND_0014063",
+    "rank": 85,
+    "score": 0.6249,
+    "reasoning": "Rank 85: blended fit 0.62 (semantic match 0.60, behavioral engagement 0.68). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.68
+  },
+  {
+    "candidate_id": "CAND_0028793",
+    "rank": 86,
+    "score": 0.6247,
+    "reasoning": "Rank 86: blended fit 0.62 (semantic match 0.57, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0057294",
+    "rank": 87,
+    "score": 0.6244,
+    "reasoning": "Rank 87: blended fit 0.62 (semantic match 0.59, behavioral engagement 0.71). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.59,
+    "behavioral": 0.71
+  },
+  {
+    "candidate_id": "CAND_0005816",
+    "rank": 88,
+    "score": 0.6242,
+    "reasoning": "Rank 88: blended fit 0.62 (semantic match 0.60, behavioral engagement 0.67). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.67
+  },
+  {
+    "candidate_id": "CAND_0075491",
+    "rank": 89,
+    "score": 0.6242,
+    "reasoning": "Rank 89: blended fit 0.62 (semantic match 0.61, behavioral engagement 0.67). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.61,
+    "behavioral": 0.67
+  },
+  {
+    "candidate_id": "CAND_0010257",
+    "rank": 90,
+    "score": 0.6241,
+    "reasoning": "Rank 90: blended fit 0.62 (semantic match 0.57, behavioral engagement 0.74). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.74
+  },
+  {
+    "candidate_id": "CAND_0081704",
+    "rank": 91,
+    "score": 0.624,
+    "reasoning": "Rank 91: blended fit 0.62 (semantic match 0.63, behavioral engagement 0.62). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.63,
+    "behavioral": 0.62
+  },
+  {
+    "candidate_id": "CAND_0083879",
+    "rank": 92,
+    "score": 0.6236,
+    "reasoning": "Rank 92: blended fit 0.62 (semantic match 0.58, behavioral engagement 0.72). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.72
+  },
+  {
+    "candidate_id": "CAND_0003717",
+    "rank": 93,
+    "score": 0.6234,
+    "reasoning": "Rank 93: blended fit 0.62 (semantic match 0.57, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0054546",
+    "rank": 94,
+    "score": 0.6232,
+    "reasoning": "Rank 94: blended fit 0.62 (semantic match 0.55, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.55,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0050454",
+    "rank": 95,
+    "score": 0.6231,
+    "reasoning": "Rank 95: blended fit 0.62 (semantic match 0.57, behavioral engagement 0.75). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.57,
+    "behavioral": 0.75
+  },
+  {
+    "candidate_id": "CAND_0071131",
+    "rank": 96,
+    "score": 0.6231,
+    "reasoning": "Rank 96: blended fit 0.62 (semantic match 0.55, behavioral engagement 0.80). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.55,
+    "behavioral": 0.8
+  },
+  {
+    "candidate_id": "CAND_0022912",
+    "rank": 97,
+    "score": 0.623,
+    "reasoning": "Rank 97: blended fit 0.62 (semantic match 0.58, behavioral engagement 0.72). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.58,
+    "behavioral": 0.72
+  },
+  {
+    "candidate_id": "CAND_0072232",
+    "rank": 98,
+    "score": 0.6227,
+    "reasoning": "Rank 98: blended fit 0.62 (semantic match 0.60, behavioral engagement 0.67). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.67
+  },
+  {
+    "candidate_id": "CAND_0010603",
+    "rank": 99,
+    "score": 0.6226,
+    "reasoning": "Rank 99: blended fit 0.62 (semantic match 0.55, behavioral engagement 0.79). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.55,
+    "behavioral": 0.79
+  },
+  {
+    "candidate_id": "CAND_0093275",
+    "rank": 100,
+    "score": 0.6223,
+    "reasoning": "Rank 100: blended fit 0.62 (semantic match 0.60, behavioral engagement 0.68). Weaker fit \u2014 included as a lower-rank option.",
+    "semantic": 0.6,
+    "behavioral": 0.68
+  }
 ];
 
 let DATA = [];
