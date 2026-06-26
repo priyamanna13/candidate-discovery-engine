@@ -237,10 +237,11 @@ def _get_model(model_name: str):
         # The library is imported as `sentence_transformers` (underscore),
         # even though the pip package is `sentence-transformers` (hyphen).
         from sentence_transformers import SentenceTransformer
+        import torch
     except ImportError as e:
         # Most common cause: requirements.txt wasn't installed. Give a hint.
         raise ImportError(
-            "Could not import sentence_transformers. "
+            "Could not import sentence_transformers or torch. "
             "Install the dependencies first:\n"
             "    pip install -r requirements.txt\n"
             f"(original error: {e})"
@@ -255,9 +256,10 @@ def _get_model(model_name: str):
 
     try:
         # SentenceTransformer(...) downloads the model the first time and
-        # loads it from the local HF cache thereafter. device="cpu" is the
-        # safe default on the hackathon machine (no GPU guaranteed).
-        _MODEL_CACHE[model_name] = SentenceTransformer(model_name, device="cpu")
+        # loads it from the local HF cache thereafter. device="cuda" is preferred if GPU is available.
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {device}")
+        _MODEL_CACHE[model_name] = SentenceTransformer(model_name, device=device)
     except Exception as e:
         # Blanket except is intentional — model loading can fail many ways
         # (network, disk, corrupted cache, OOM). We just need to surface a
