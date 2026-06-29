@@ -304,6 +304,18 @@ def generate_submission(ranked_candidates: list,
     except OSError as e:
         raise OSError(f"Could not write CSV to {filepath}: {e}") from e
 
+    # Write the XLSX file using pandas
+    try:
+        import pandas as pd
+        xlsx_filepath = filepath.with_suffix(".xlsx")
+        df = pd.DataFrame(rows)
+        # Ensure score columns or numeric values are formatted properly if needed,
+        # but matching the CSV exactly is safest.
+        df.to_excel(xlsx_filepath, index=False)
+        print(f"  XLSX written: {xlsx_filepath}")
+    except Exception as e:
+        print(f"  Warning: Could not write XLSX to {filepath.with_suffix('.xlsx')}: {e}")
+
     # --- Step (d): return the full path as a string -------------------------
     return str(filepath)
 
