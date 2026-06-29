@@ -175,8 +175,11 @@ input, select { font-family: inherit; color: inherit; }
 }
 .eyebrow .tick { width: 18px; height: 1px; background: var(--line-2); }
 
-.reveal { opacity: 0; transform: translateY(14px); animation: reveal .7s cubic-bezier(.16,.84,.44,1) forwards; }
-@keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+.reveal { opacity: 1; animation: reveal .7s cubic-bezier(.16,.84,.44,1) forwards; }
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* =================================================================
    HERO  (Spline lives here)
@@ -1564,10 +1567,12 @@ let sortKey = 'rank', sortDir = 'asc';
 let distChart = null, scatterChart = null;
 
 /* ---- Chart.js global theme ---- */
-Chart.defaults.color = '#6e7280';
-Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.font.size = 11.5;
-Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#6e7280';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.font.size = 11.5;
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+}
 
 /* ============================================================
    PARSING
@@ -1795,6 +1800,10 @@ function tooltipCfg() {
   };
 }
 function renderDistribution() {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js is not loaded. Skipping distribution chart.');
+    return;
+  }
   const bins = ['0.62–0.63','0.63–0.64','0.64–0.65','0.65–0.66','0.66–0.67'];
   const counts = [0,0,0,0,0];
   DATA.forEach(d => {
@@ -1829,6 +1838,10 @@ function renderDistribution() {
   });
 }
 function renderScatter() {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js is not loaded. Skipping scatter chart.');
+    return;
+  }
   const sets = [
     { label:'Top 1–10', color:'#f0cb8a', rows: DATA.filter(d => d.rank <= 10) },
     { label:'11–50',    color:'#5eead4', rows: DATA.filter(d => d.rank > 10 && d.rank <= 50) },
